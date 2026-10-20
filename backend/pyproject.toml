@@ -2,6 +2,7 @@
 name = "setid"
 version = "0.1.0"
 description = "Extractor de tracklists de sets de DJ"
+license = "MIT"
 authors = [
     { name = "luzonventura", email = "antonioluzonventura@hotmail.com" }
 ]

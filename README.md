@@ -194,3 +194,7 @@ El logo se regenera con `uv run python scripts/make_icon.py` (icono `.ico` y `fa
 
 El modelo de amenazas (STRIDE), las mitigaciones y los riesgos residuales están en
 [SECURITY.md](SECURITY.md).
+
+## Licencia
+
+[MIT](LICENSE).
