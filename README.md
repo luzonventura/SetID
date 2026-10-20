@@ -1,5 +1,10 @@
 # SetID
 
+[![CI](https://github.com/luzonventura/SetID/actions/workflows/ci.yml/badge.svg)](https://github.com/luzonventura/SetID/actions/workflows/ci.yml)
+[![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
+![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
+![Windows](https://img.shields.io/badge/plataforma-Windows-0078D6.svg)
+
 Extractor de tracklists de sets de DJ para Windows. Pegas un enlace de YouTube o SoundCloud, o
 eliges un archivo de audio, y SetID devuelve el tracklist con marcas de tiempo.
 
@@ -28,7 +33,7 @@ eliges un archivo de audio, y SetID devuelve el tracklist con marcas de tiempo.
 ## Instalación
 
 ```powershell
-git clone <url-del-repositorio> SetID
+git clone https://github.com/luzonventura/SetID.git
 cd SetID\frontend
 npm ci
 npm run build
@@ -57,7 +62,8 @@ uv run python scripts/build_app.py --shortcuts
 
 Genera `backend\dist\SetID\` con `SetID.exe` (la app) y `setid-cli.exe` (la CLI, que la app
 también usa para ejecutar yt-dlp), y crea accesos directos en Inicio y en el Escritorio. Sin
-`--shortcuts` solo construye. La CI publica este mismo ejecutable como artefacto en cada push.
+`--shortcuts` solo construye. La [CI](https://github.com/luzonventura/SetID/actions/workflows/ci.yml)
+publica este mismo ejecutable como artefacto (`SetID-windows`) en cada push.
 
 ### CLI
 

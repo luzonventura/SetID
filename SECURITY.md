@@ -7,8 +7,10 @@ riesgos que se aceptan.
 
 ## Comunicar un problema
 
-Abre un *issue* sin detalles explotables y pide un canal privado, o escribe directamente al
-autor. No publiques pruebas de concepto antes de que haya una corrección.
+No abras un *issue* público. Usa el reporte privado de vulnerabilidades de GitHub:
+[Report a vulnerability](https://github.com/luzonventura/SetID/security/advisories/new). Indica
+la versión o el commit afectado, los pasos para reproducirlo y el impacto. No publiques pruebas
+de concepto antes de que haya una corrección.
 
 ## Alcance y fronteras de confianza
 

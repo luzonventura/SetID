@@ -18,6 +18,10 @@ dependencies = [
     "yt-dlp>=2026.8.19",
 ]
 
+[project.urls]
+Repository = "https://github.com/luzonventura/SetID"
+Issues = "https://github.com/luzonventura/SetID/issues"
+
 [project.scripts]
 setid = "setid.cli:main"
 setid-app = "setid.app.desktop:main"
