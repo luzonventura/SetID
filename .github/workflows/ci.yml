@@ -1,0 +1,115 @@
+# CI de SetID: calidad y tests del backend y del frontend, y build del ejecutable.
+# El backend corre en Windows porque es la plataforma de destino (rutas, CREATE_NO_WINDOW,
+# Administrador de credenciales) y algunos tests usan rutas de Windows.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (ruff, mypy, pytest)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      # Los tests marcados `ffmpeg` necesitan ffmpeg/ffprobe; sin ellos se omiten.
+      - name: Instalar ffmpeg
+        run: choco install ffmpeg --no-progress -y
+
+      - name: Dependencias
+        run: uv sync --locked --all-extras
+
+      - name: Ruff (lint)
+        run: uv run ruff check .
+
+      - name: Ruff (formato)
+        run: uv run ruff format --check .
+
+      - name: Mypy
+        run: uv run mypy
+
+      - name: Pytest
+        run: uv run pytest
+
+  frontend:
+    name: Frontend (eslint, tsc, vitest, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  build:
+    name: Ejecutable (PyInstaller)
+    needs: [backend, frontend]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dependencias
+        run: uv sync --locked --all-extras
+
+      # Compila la interfaz (npm ci + build) y luego los ejecutables. Sin --shortcuts.
+      - name: Construir SetID
+        run: uv run python scripts/build_app.py
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: SetID-windows
+          path: backend/dist/SetID
+          if-no-files-found: error
+          retention-days: 14

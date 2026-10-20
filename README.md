@@ -117,7 +117,15 @@ uv run setid --step 60 --max-queries 100 --json <url|archivo>
 
 Un set de 1 h con el paso por defecto (30 s) son ~120 consultas.
 
+## Seguridad
+
+El modelo de amenazas (STRIDE), las mitigaciones y los riesgos residuales están en
+[SECURITY.md](SECURITY.md).
+
 ## Desarrollo
+
+La CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) ejecuta estos mismos comandos
+en cada push y pull request, y construye el ejecutable en Windows como artefacto.
 
 ```bash
 cd backend
@@ -126,5 +134,5 @@ uv run mypy
 uv run pytest
 
 cd ../frontend
-npm run lint && npm run typecheck && npm test
+npm run lint && npm run typecheck && npm test && npm run build
 ```
