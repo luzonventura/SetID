@@ -108,7 +108,7 @@ jobs:
       - name: Construir SetID
         run: uv run python scripts/build_app.py
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: SetID-windows
           path: backend/dist/SetID
