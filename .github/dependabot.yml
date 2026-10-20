@@ -23,6 +23,18 @@ updates:
       npm:
         patterns: ["*"]
         update-types: [minor, patch]
+    ignore:
+      # Los tipos de Node siguen a la versión que usa el proyecto (Node 22).
+      - dependency-name: "@types/node"
+        versions: [">=23"]
+      # eslint-plugin-jsx-a11y todavía no admite ESLint 10.
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@eslint/js"
+        update-types: ["version-update:semver-major"]
+      # typescript-eslint todavía no admite TypeScript 7.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
