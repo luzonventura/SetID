@@ -1,0 +1,6 @@
+# Finales de línea LF en el repositorio, sea cual sea el sistema.
+* text=auto eol=lf
+
+*.ico binary
+*.png binary
+*.woff2 binary
