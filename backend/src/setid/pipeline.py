@@ -150,7 +150,7 @@ async def prepare_input(
     on_progress: ProgressCallback | None = None,
     resolver: RedirectResolver | None = None,
 ) -> PreparedInput:
-    """Pasos 1–2: validación y metadatos, antes de descargar nada."""
+    """Valida la entrada y lee sus metadatos (o el hash del archivo) sin descargar nada."""
     report = _reporter(on_progress)
     report(Phase.DOWNLOADING, 0, "Validando la entrada")
     if looks_like_url(value):
@@ -202,7 +202,10 @@ async def process_input(
     on_progress: ProgressCallback | None = None,
     budget: QueryBudget | None = None,
 ) -> PipelineResult:
-    """Pasos 3–8. Todo el audio vive en un directorio temporal que se borra siempre."""
+    """Descarga, normaliza, segmenta, reconoce y agrega.
+
+    Todo el audio vive en un directorio temporal que se borra siempre.
+    """
     report = _reporter(on_progress)
     budget = budget or FixedBudget(settings.daily_query_budget)
     params = aggregation_params(settings)

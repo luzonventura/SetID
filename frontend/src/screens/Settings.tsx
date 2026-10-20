@@ -121,7 +121,9 @@ function SecretField({
     <div>
       <label htmlFor={id} className="label flex items-center gap-2">
         {label}
-        <span className={stored ? 'text-ok' : ''}>{stored ? '· guardada' : '· sin configurar'}</span>
+        <span className={stored ? 'text-ok' : ''}>
+          {stored ? '· guardada' : '· sin configurar'}
+        </span>
       </label>
       <div className="mt-2 flex flex-wrap gap-2">
         <input
@@ -163,7 +165,8 @@ export function Settings() {
         setView(v)
         setDraft(v.values)
       },
-      (e) => setLoadError(e instanceof BridgeError ? e.message : 'No se pudieron cargar los ajustes.'),
+      (e) =>
+        setLoadError(e instanceof BridgeError ? e.message : 'No se pudieron cargar los ajustes.'),
     )
   }, [])
 
@@ -188,7 +191,10 @@ export function Settings() {
       setDraft(next.values)
       setStatus({ tone: 'ok', text: 'Ajustes guardados.' })
     } catch (err) {
-      setStatus({ tone: 'error', text: err instanceof BridgeError ? err.message : 'No se pudo guardar.' })
+      setStatus({
+        tone: 'error',
+        text: err instanceof BridgeError ? err.message : 'No se pudo guardar.',
+      })
     }
   }
 
@@ -202,7 +208,10 @@ export function Settings() {
         <h1 className="display mt-3 text-[clamp(2.5rem,6vw,4.5rem)]">Ajustes</h1>
       </header>
 
-      <Section title="Proveedor" hint="Quién identifica los fragmentos. Puedes cambiarlo cuando quieras; los resultados ya guardados no se pierden.">
+      <Section
+        title="Proveedor"
+        hint="Quién identifica los fragmentos. Puedes cambiarlo cuando quieras; los resultados ya guardados no se pierden."
+      >
         <fieldset>
           <legend className="sr-only">Proveedor de reconocimiento</legend>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -212,7 +221,9 @@ export function Settings() {
                 <label
                   key={p.id}
                   className={`relative cursor-pointer border p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-signal ${
-                    selected ? 'border-signal bg-signal-soft' : 'border-line-strong hover:border-chalk'
+                    selected
+                      ? 'border-signal bg-signal-soft'
+                      : 'border-line-strong hover:border-chalk'
                   }`}
                 >
                   <input
@@ -276,14 +287,31 @@ export function Settings() {
         </div>
       </Section>
 
-      <Section title="Segmentación" hint="Fragmentos más frecuentes dan marcas de tiempo más precisas a cambio de más consultas.">
+      <Section
+        title="Segmentación"
+        hint="Fragmentos más frecuentes dan marcas de tiempo más precisas a cambio de más consultas."
+      >
         <div className="grid gap-5 sm:grid-cols-2">
-          <NumberField label="Duración del fragmento (s)" value={draft.window_s} min={4} max={30} onChange={(v) => set('window_s', v ?? 12)} />
-          <NumberField label="Un fragmento cada (s)" value={draft.step_s} min={5} onChange={(v) => set('step_s', v ?? 30)} />
+          <NumberField
+            label="Duración del fragmento (s)"
+            value={draft.window_s}
+            min={4}
+            max={30}
+            onChange={(v) => set('window_s', v ?? 12)}
+          />
+          <NumberField
+            label="Un fragmento cada (s)"
+            value={draft.step_s}
+            min={5}
+            onChange={(v) => set('step_s', v ?? 30)}
+          />
         </div>
       </Section>
 
-      <Section title="Agrupación" hint="Cómo se convierten las detecciones sueltas en un tracklist.">
+      <Section
+        title="Agrupación"
+        hint="Cómo se convierten las detecciones sueltas en un tracklist."
+      >
         <div className="grid gap-5 sm:grid-cols-2">
           <NumberField
             label="Confianza mínima (0–1)"
@@ -345,11 +373,20 @@ export function Settings() {
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-ink/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8">
-          <p role="status" className={`text-sm ${status?.tone === 'error' ? 'text-bad' : 'text-ok'}`}>
-            {status?.text ?? (dirty ? <span className="text-fog">Hay cambios sin guardar</span> : null)}
+          <p
+            role="status"
+            className={`text-sm ${status?.tone === 'error' ? 'text-bad' : 'text-ok'}`}
+          >
+            {status?.text ??
+              (dirty ? <span className="text-fog">Hay cambios sin guardar</span> : null)}
           </p>
           <div className="flex gap-2">
-            <button type="button" className="btn-ghost" disabled={!dirty} onClick={() => setDraft(view.values)}>
+            <button
+              type="button"
+              className="btn-ghost"
+              disabled={!dirty}
+              onClick={() => setDraft(view.values)}
+            >
               Descartar
             </button>
             <button type="submit" className="btn-primary" disabled={!dirty}>

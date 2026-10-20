@@ -24,7 +24,11 @@ function BudgetChip() {
   const [budget, setBudget] = useState<Budget | null>(null)
   useEffect(() => {
     let alive = true
-    const load = () => api.getBudget().then((b) => alive && setBudget(b), () => {})
+    const load = () =>
+      api.getBudget().then(
+        (b) => alive && setBudget(b),
+        () => {},
+      )
     void load()
     // Se refresca cuando termina un trabajo (es cuando cambian las consultas usadas).
     const off = onBridgeEvent((e) => {

@@ -6,7 +6,13 @@ import { ExternalLink } from './ui'
 const LEVEL_TEXT = { high: 'alta', medium: 'media', low: 'baja' }
 const LEVEL_COLOR = { high: 'bg-ok', medium: 'bg-warn', low: 'bg-bad' }
 
-export function ConfidenceMeter({ value, detections }: { value: number | null; detections: number }) {
+export function ConfidenceMeter({
+  value,
+  detections,
+}: {
+  value: number | null
+  detections: number
+}) {
   if (value === null) return null
   const level = confidenceLevel(value)
   const filled = Math.max(1, Math.round(value * 5))
@@ -89,7 +95,11 @@ export function Tracklist({
   }
 
   return (
-    <ol aria-label="Tracklist" aria-live={live ? 'polite' : undefined} className="border-t border-line">
+    <ol
+      aria-label="Tracklist"
+      aria-live={live ? 'polite' : undefined}
+      className="border-t border-line"
+    >
       {entries.map((e) => {
         const unknown = e.source === 'unknown'
         return (
@@ -114,7 +124,9 @@ export function Tracklist({
                 <span className="block truncate font-semibold [font-stretch:110%]">{e.artist}</span>
                 <span className="block truncate text-sm text-chalk/80">
                   {e.title}
-                  {e.label && <span className="label ml-2 normal-case tracking-normal">· {e.label}</span>}
+                  {e.label && (
+                    <span className="label ml-2 normal-case tracking-normal">· {e.label}</span>
+                  )}
                 </span>
               </span>
             )}

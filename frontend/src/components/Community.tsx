@@ -123,7 +123,10 @@ export function CommunityPanel({ community }: { community: Community }) {
 
       {community.tracklist.length > 0 && (
         <section aria-labelledby="community-tracklist">
-          <h3 id="community-tracklist" className="flex items-baseline justify-between border-b border-line-strong pb-2">
+          <h3
+            id="community-tracklist"
+            className="flex items-baseline justify-between border-b border-line-strong pb-2"
+          >
             <span className="display text-lg">Tracklist publicado</span>
             <span className="label">{community.tracklist_origin}</span>
           </h3>
@@ -137,7 +140,10 @@ export function CommunityPanel({ community }: { community: Community }) {
 
       {community.mentions.length > 0 && (
         <section aria-labelledby="community-mentions">
-          <h3 id="community-mentions" className="flex items-baseline justify-between border-b border-line-strong pb-2">
+          <h3
+            id="community-mentions"
+            className="flex items-baseline justify-between border-b border-line-strong pb-2"
+          >
             <span className="display text-lg">En los comentarios</span>
             <span className="label">{community.mentions.length} menciones</span>
           </h3>

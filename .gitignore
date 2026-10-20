@@ -1,20 +1,42 @@
+# Entorno y secretos
 .env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+
+# Builds
+build/
+dist/
+
+# Datos locales y audio
 *.db
 *.db-wal
 *.db-shm
 *.log
-.venv/
-__pycache__/
-*.pyc
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-node_modules/
-dist/
-build/
 *.wav
 *.mp3
 *.flac
 *.m4a
 *.opus
 *.webm
+
+# Editores y sistema
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

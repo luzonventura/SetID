@@ -60,7 +60,8 @@ class Settings(BaseSettings):
     download_timeout_s: float = Field(default=20 * 60.0, gt=0)
     ffmpeg_timeout_s: float = Field(default=20 * 60.0, gt=0)
 
-    # Credenciales (en fase 2 pasan al almacén de credenciales de Windows)
+    # Credenciales. En la app de escritorio se guardan en el Administrador de credenciales
+    # (ver settings_store); aquí solo llegan desde .env o variables de entorno.
     acrcloud_host: str = "identify-eu-west-1.acrcloud.com"
     acrcloud_access_key: SecretStr | None = None
     acrcloud_access_secret: SecretStr | None = None

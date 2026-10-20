@@ -78,6 +78,7 @@ registrado en `setid.db` (fuente, proveedor, estado, mensajes de error) y los ev
 | Errores internos que se filtran a la interfaz | El decorador `_endpoint` devuelve mensajes pensados para el usuario y, ante cualquier otra excepción, un mensaje genérico; el detalle va solo al log (`app/bridge.py`). La salida de error de los procesos se recorta a 2000 caracteres. |
 | El audio del usuario o descargado se queda en disco | Cada trabajo usa `tmp\job-<uuid>\`, que se borra en un `finally` aunque el trabajo falle o se cancele, con reintentos por los bloqueos típicos de Windows. Al arrancar se purgan restos de más de 6 h (p. ej. si el proceso murió) (`workdir.py`). |
 | Ruta real de un archivo soltado | Solo la conoce Python (`pywebviewFullPath`); la página recibe el trabajo ya creado (`handle_drop`). |
+| Las claves de ACRCloud acaban en otro servidor cambiando el host en Ajustes | El host solo se acepta si tiene la forma `identify-*.acrcloud.com` (o `.cn`); si no, el proveedor se niega a enviar nada (`providers/acrcloud.py`). |
 | Envío del audio a terceros | Con Shazam la huella se calcula en local y solo se envía la firma. Con ACRCloud se firma la petición con HMAC y el secreto no viaja. Los proveedores solo reciben fragmentos cortos del set. |
 | Datos de navegación en WebView2 | La ventana se abre con `private_mode=True`. |
 
@@ -108,7 +109,9 @@ registrado en `setid.db` (fuente, proveedor, estado, mensajes de error) y los ev
   ejecutable), con la versión del lockfile, no con un yt-dlp cualquiera del PATH.
 - La CI (`.github/workflows/ci.yml`) corre con `permissions: contents: read`, sin
   credenciales persistidas en el checkout y con actions fijadas por versión mayor. Ruff aplica
-  las reglas de seguridad de Bandit (`S`).
+  las reglas de seguridad de Bandit (`S`) y ESLint prohíbe `dangerouslySetInnerHTML` y `eval`.
+- Dependabot (`.github/dependabot.yml`) propone cada semana las actualizaciones de Python y npm,
+  con yt-dlp en un grupo propio, y cada mes las de las actions.
 
 ## Riesgos residuales
 
@@ -118,15 +121,11 @@ registrado en `setid.db` (fuente, proveedor, estado, mensajes de error) y los ev
 - **Descargar de YouTube puede contravenir sus términos de servicio.** La app lo advierte y
   recomienda usar archivos propios.
 - **yt-dlp necesita actualizaciones frecuentes**: los sitios cambian y una versión antigua deja
-  de funcionar o puede tener fallos al procesar contenido remoto. Hay que actualizar
-  `uv.lock` y reconstruir el ejecutable.
+  de funcionar o puede tener fallos al procesar contenido remoto. Dependabot avisa, pero hay
+  que aceptar la actualización y reconstruir el ejecutable.
 - **ffmpeg y ffprobe se toman del PATH** y no van dentro del ejecutable. Un ffmpeg malicioso o
   vulnerable en el PATH se ejecutaría con los permisos del usuario, y ffmpeg procesa contenido
   no confiable (el audio). Conviene instalarlo de una fuente fiable y mantenerlo actualizado.
-- **El host de ACRCloud (`acrcloud_host`) es un ajuste editable sin lista blanca.** Si alguien
-  consiguiera ejecutar JavaScript en la interfaz pese a la CSP, podría apuntarlo a otro servidor y
-  recibir la *access key* y las firmas (el secreto no se envía). Mejora pendiente: validar que el
-  host termine en `.acrcloud.com`.
 - **Tracklist de la comunidad sin verificar.** Las descripciones y comentarios son texto de
   terceros; se muestran siempre marcados como *sin verificar* y separados de lo que identifica
   la huella, pero pueden ser erróneos o engañosos.

@@ -1,13 +1,7 @@
 // Espejo de las vistas de Python (setid/jobs/views.py y setid/app/bridge.py).
 
 export type JobStatus =
-  | 'queued'
-  | 'downloading'
-  | 'analyzing'
-  | 'aggregating'
-  | 'done'
-  | 'failed'
-  | 'cancelled'
+  'queued' | 'downloading' | 'analyzing' | 'aggregating' | 'done' | 'failed' | 'cancelled'
 
 export type SourceType = 'youtube' | 'soundcloud' | 'upload'
 export type EntrySource = 'fingerprint' | 'community' | 'unknown'

@@ -80,7 +80,7 @@ def frontend_entry() -> Path:
     candidates = []
     if override := os.environ.get("SETID_FRONTEND_DIR"):
         candidates.append(Path(override))
-    if bundle := getattr(sys, "_MEIPASS", None):  # ejecutable de PyInstaller (fase 4)
+    if bundle := getattr(sys, "_MEIPASS", None):  # ejecutable de PyInstaller
         candidates.append(Path(bundle) / "frontend")
     candidates.append(Path(__file__).resolve().parents[4] / "frontend" / "dist")
     for directory in candidates:

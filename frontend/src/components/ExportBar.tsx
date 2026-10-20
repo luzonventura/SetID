@@ -35,7 +35,10 @@ export function ExportBar({ jobId }: { jobId: number }) {
       const message = await action()
       if (message) setStatus({ tone: 'ok', text: message })
     } catch (err) {
-      setStatus({ tone: 'error', text: err instanceof BridgeError ? err.message : 'No se pudo exportar.' })
+      setStatus({
+        tone: 'error',
+        text: err instanceof BridgeError ? err.message : 'No se pudo exportar.',
+      })
     }
   }
 

@@ -1,0 +1,30 @@
+# Actualizaciones semanales agrupadas. yt-dlp necesita estar al día para seguir funcionando
+# con YouTube y SoundCloud, así que va en su propio grupo.
+
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    groups:
+      yt-dlp:
+        patterns: ["yt-dlp"]
+      python:
+        patterns: ["*"]
+        exclude-patterns: ["yt-dlp"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

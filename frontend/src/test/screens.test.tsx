@@ -42,9 +42,12 @@ describe('Home', () => {
     await waitFor(() => expect(window.location.hash).toBe('#/job/1'))
 
     await screen.findByRole('heading', { name: /Jorgesyn/ }, { timeout: 2000 })
-    await waitFor(() => expect(screen.getByText('Listo', { selector: 'span' })).toBeInTheDocument(), {
-      timeout: 3000,
-    })
+    await waitFor(
+      () => expect(screen.getByText('Listo', { selector: 'span' })).toBeInTheDocument(),
+      {
+        timeout: 3000,
+      },
+    )
     const list = screen.getByRole('list', { name: 'Tracklist' })
     expect(list.children).toHaveLength(7)
     // Una vez como fila y otra como sugerencia (el tracklist de la comunidad también dice ID).
@@ -65,7 +68,9 @@ describe('Home', () => {
     expect(within(panel).getByText(/No está verificado/)).toBeInTheDocument()
     expect(within(panel).getByText(/out on Music On soon/)).toBeInTheDocument()
     // Los mashups muestran el acapella aparte, no dentro del título.
-    expect(within(panel).getByText('+ Max Dean & Luke Dean - Gets Like That (Acapella)')).toBeInTheDocument()
+    expect(
+      within(panel).getByText('+ Max Dean & Luke Dean - Gets Like That (Acapella)'),
+    ).toBeInTheDocument()
     expect(within(panel).getByText('– Brasuca Vibes')).toBeInTheDocument()
     expect(screen.queryByRole('list', { name: 'Tracklist' })).not.toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Tracklist', hidden: true })).not.toBeVisible()
@@ -75,19 +80,35 @@ describe('Home', () => {
     const user = userEvent.setup()
     render(<App />)
     await user.click(screen.getByRole('button', { name: /Usa tu propio archivo/ }))
-    await waitFor(() => expect(screen.getByText('Listo', { selector: 'span' })).toBeInTheDocument(), {
-      timeout: 3000,
-    })
+    await waitFor(
+      () => expect(screen.getByText('Listo', { selector: 'span' })).toBeInTheDocument(),
+      {
+        timeout: 3000,
+      },
+    )
     expect(screen.queryByRole('tab')).not.toBeInTheDocument()
     expect(screen.queryByText(/La comunidad sugiere/)).not.toBeInTheDocument()
   })
 })
 
 const entry = (over: Partial<Entry>): Entry => ({
-  position: 1, start_s: 125, end_s: 300, artist: 'Marco Carola', title: 'Space', label: 'Music On',
-  isrc: null, confidence: 0.92, detections: 6, source: 'fingerprint',
-  timestamp_url: 'https://www.youtube.com/watch?v=abcdefghijk&t=125s', suggestions: [],
-  search: { beatport: 'https://www.beatport.com/search?q=x', spotify: 'https://open.spotify.com/search/x', youtube: 'https://www.youtube.com/results?search_query=x' },
+  position: 1,
+  start_s: 125,
+  end_s: 300,
+  artist: 'Marco Carola',
+  title: 'Space',
+  label: 'Music On',
+  isrc: null,
+  confidence: 0.92,
+  detections: 6,
+  source: 'fingerprint',
+  timestamp_url: 'https://www.youtube.com/watch?v=abcdefghijk&t=125s',
+  suggestions: [],
+  search: {
+    beatport: 'https://www.beatport.com/search?q=x',
+    spotify: 'https://open.spotify.com/search/x',
+    youtube: 'https://www.youtube.com/results?search_query=x',
+  },
   ...over,
 })
 
@@ -99,13 +120,27 @@ describe('Tracklist', () => {
         highlight={null}
         entries={[
           entry({}),
-          entry({ position: 2, start_s: 400, end_s: 520, artist: 'ID', title: 'ID', source: 'unknown', confidence: null, search: null, timestamp_url: null }),
+          entry({
+            position: 2,
+            start_s: 400,
+            end_s: 520,
+            artist: 'ID',
+            title: 'ID',
+            source: 'unknown',
+            confidence: null,
+            search: null,
+            timestamp_url: null,
+          }),
         ]}
       />,
     )
-    expect(screen.getByRole('img', { name: /Confianza alta \(0\.92\), 6 segmentos/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: /Confianza alta \(0\.92\), 6 segmentos/ }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Abrir el set en 02:05' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Buscar Marco Carola – Space en Beatport' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Buscar Marco Carola – Space en Beatport' }),
+    ).toBeInTheDocument()
     expect(screen.getByText(/sin identificar · 02:00/)).toBeInTheDocument()
   })
 

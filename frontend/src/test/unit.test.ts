@@ -38,18 +38,40 @@ describe('router', () => {
 })
 
 const job = (id: number, extra: Partial<Job> = {}): Job => ({
-  id, source_type: 'upload', source: 'a.wav', canonical_id: null, title: null, uploader: null,
-  duration_s: null, provider: 'fake', status: 'queued', progress: 0, message: null, error: null,
-  queries_used: 0, retries: 0, estimated_cost: 0, cached: false,
-  created_at: '2026-10-18T00:00:00Z', started_at: null, finished_at: null, ...extra,
+  id,
+  source_type: 'upload',
+  source: 'a.wav',
+  canonical_id: null,
+  title: null,
+  uploader: null,
+  duration_s: null,
+  provider: 'fake',
+  status: 'queued',
+  progress: 0,
+  message: null,
+  error: null,
+  queries_used: 0,
+  retries: 0,
+  estimated_cost: 0,
+  cached: false,
+  created_at: '2026-10-18T00:00:00Z',
+  started_at: null,
+  finished_at: null,
+  ...extra,
 })
 
 describe('reducer', () => {
   it('applies job, tracklist and delete events', () => {
     let state = reducer(initialState, { type: 'loaded', jobs: [job(1), job(2)] })
-    state = reducer(state, { type: 'event', event: { type: 'job', job: job(2, { status: 'analyzing' }) } })
+    state = reducer(state, {
+      type: 'event',
+      event: { type: 'job', job: job(2, { status: 'analyzing' }) },
+    })
     expect(state.jobs[2].status).toBe('analyzing')
-    state = reducer(state, { type: 'event', event: { type: 'tracklist', job_id: 2, live: true, tracklist: [] } })
+    state = reducer(state, {
+      type: 'event',
+      event: { type: 'tracklist', job_id: 2, live: true, tracklist: [] },
+    })
     expect(state.tracklists[2]).toEqual({ entries: [], live: true })
     state = reducer(state, { type: 'event', event: { type: 'job_deleted', job_id: 2 } })
     expect(state.jobs[2]).toBeUndefined()

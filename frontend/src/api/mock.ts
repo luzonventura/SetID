@@ -24,9 +24,18 @@ function links(artist: string, title: string) {
 function hint(over: Partial<Hint> & Pick<Hint, 'artist' | 'title' | 'kind'>): Hint {
   const isId = over.artist === 'ID' && over.title === 'ID'
   return {
-    start_s: null, unreleased: false, is_id: isId, origin: 'descripción', author: null,
-    likes: 0, text: `${over.artist} - ${over.title}`, position: 0, note: null, timestamp_url: null,
-    search: isId ? null : links(over.artist, over.title), ...over,
+    start_s: null,
+    unreleased: false,
+    is_id: isId,
+    origin: 'descripción',
+    author: null,
+    likes: 0,
+    text: `${over.artist} - ${over.title}`,
+    position: 0,
+    note: null,
+    timestamp_url: null,
+    search: isId ? null : links(over.artist, over.title),
+    ...over,
   }
 }
 
@@ -34,32 +43,153 @@ function hint(over: Partial<Hint> & Pick<Hint, 'artist' | 'title' | 'kind'>): Hi
 const SAMPLE_COMMUNITY: Community = {
   tracklist_origin: 'comentario fijado',
   tracklist: [
-    hint({ kind: 'tracklist', position: 1, start_s: 120, artist: 'Joey Harmless', title: 'So Shady', origin: 'comentario fijado' }),
-    hint({ kind: 'tracklist', position: 2, start_s: 390, artist: 'Cris Ocana', title: 'Brasuca Vibes', note: 'Max Dean & Luke Dean - Gets Like That (Acapella)', origin: 'comentario fijado' }),
-    hint({ kind: 'tracklist', position: 3, start_s: 570, artist: 'ID', title: 'ID', unreleased: true, origin: 'comentario fijado' }),
-    hint({ kind: 'tracklist', position: 4, start_s: 690, artist: 'Daniel Insogna', title: 'Hold On', origin: 'comentario fijado' }),
+    hint({
+      kind: 'tracklist',
+      position: 1,
+      start_s: 120,
+      artist: 'Joey Harmless',
+      title: 'So Shady',
+      origin: 'comentario fijado',
+    }),
+    hint({
+      kind: 'tracklist',
+      position: 2,
+      start_s: 390,
+      artist: 'Cris Ocana',
+      title: 'Brasuca Vibes',
+      note: 'Max Dean & Luke Dean - Gets Like That (Acapella)',
+      origin: 'comentario fijado',
+    }),
+    hint({
+      kind: 'tracklist',
+      position: 3,
+      start_s: 570,
+      artist: 'ID',
+      title: 'ID',
+      unreleased: true,
+      origin: 'comentario fijado',
+    }),
+    hint({
+      kind: 'tracklist',
+      position: 4,
+      start_s: 690,
+      artist: 'Daniel Insogna',
+      title: 'Hold On',
+      origin: 'comentario fijado',
+    }),
   ],
   mentions: [
-    hint({ kind: 'reply', start_s: 600, artist: 'Toman', title: 'Bounce', unreleased: true, origin: 'respuesta de @digger', author: '@digger', likes: 31, text: "It's Toman - Bounce (unreleased, out on Music On soon)" }),
-    hint({ kind: 'comment', start_s: 1500, artist: 'Bassel Darwish', title: 'Lami', origin: 'comentario de @raver', author: '@raver', likes: 4, text: '25:00 Bassel Darwish - Lami 🔥🔥' }),
+    hint({
+      kind: 'reply',
+      start_s: 600,
+      artist: 'Toman',
+      title: 'Bounce',
+      unreleased: true,
+      origin: 'respuesta de @digger',
+      author: '@digger',
+      likes: 31,
+      text: "It's Toman - Bounce (unreleased, out on Music On soon)",
+    }),
+    hint({
+      kind: 'comment',
+      start_s: 1500,
+      artist: 'Bassel Darwish',
+      title: 'Lami',
+      origin: 'comentario de @raver',
+      author: '@raver',
+      likes: 4,
+      text: '25:00 Bassel Darwish - Lami 🔥🔥',
+    }),
   ],
 }
 
 const SAMPLE: Omit<Entry, 'position' | 'timestamp_url' | 'search' | 'suggestions'>[] = [
-  { start_s: 120, end_s: 372, artist: 'Joey Harmless', title: 'So Shady', label: 'Bear Fresh Records', isrc: null, confidence: 0.92, detections: 8, source: 'fingerprint' },
-  { start_s: 390, end_s: 552, artist: 'Cris Ocana', title: 'Brasuca Vibes (Extended Mix)', label: 'Klaphouse Records', isrc: null, confidence: 0.81, detections: 5, source: 'fingerprint' },
-  { start_s: 570, end_s: 690, artist: 'ID', title: 'ID', label: null, isrc: null, confidence: null, detections: 0, source: 'unknown' },
-  { start_s: 690, end_s: 912, artist: 'Daniel Insogna & AJK (US)', title: 'Hold On', label: 'SK LAB', isrc: null, confidence: 0.64, detections: 4, source: 'fingerprint' },
-  { start_s: 930, end_s: 1182, artist: 'Souler (ES)', title: 'Brillo', label: 'Nervous Records', isrc: null, confidence: 0.88, detections: 7, source: 'fingerprint' },
-  { start_s: 1200, end_s: 1452, artist: 'Ammu & Hoff', title: 'Want Your Time', label: 'Libero X', isrc: null, confidence: 0.47, detections: 2, source: 'fingerprint' },
-  { start_s: 1470, end_s: 1680, artist: 'Bassel Darwish', title: 'Lami', label: 'Moon Harbour', isrc: null, confidence: 0.95, detections: 9, source: 'fingerprint' },
+  {
+    start_s: 120,
+    end_s: 372,
+    artist: 'Joey Harmless',
+    title: 'So Shady',
+    label: 'Bear Fresh Records',
+    isrc: null,
+    confidence: 0.92,
+    detections: 8,
+    source: 'fingerprint',
+  },
+  {
+    start_s: 390,
+    end_s: 552,
+    artist: 'Cris Ocana',
+    title: 'Brasuca Vibes (Extended Mix)',
+    label: 'Klaphouse Records',
+    isrc: null,
+    confidence: 0.81,
+    detections: 5,
+    source: 'fingerprint',
+  },
+  {
+    start_s: 570,
+    end_s: 690,
+    artist: 'ID',
+    title: 'ID',
+    label: null,
+    isrc: null,
+    confidence: null,
+    detections: 0,
+    source: 'unknown',
+  },
+  {
+    start_s: 690,
+    end_s: 912,
+    artist: 'Daniel Insogna & AJK (US)',
+    title: 'Hold On',
+    label: 'SK LAB',
+    isrc: null,
+    confidence: 0.64,
+    detections: 4,
+    source: 'fingerprint',
+  },
+  {
+    start_s: 930,
+    end_s: 1182,
+    artist: 'Souler (ES)',
+    title: 'Brillo',
+    label: 'Nervous Records',
+    isrc: null,
+    confidence: 0.88,
+    detections: 7,
+    source: 'fingerprint',
+  },
+  {
+    start_s: 1200,
+    end_s: 1452,
+    artist: 'Ammu & Hoff',
+    title: 'Want Your Time',
+    label: 'Libero X',
+    isrc: null,
+    confidence: 0.47,
+    detections: 2,
+    source: 'fingerprint',
+  },
+  {
+    start_s: 1470,
+    end_s: 1680,
+    artist: 'Bassel Darwish',
+    title: 'Lami',
+    label: 'Moon Harbour',
+    isrc: null,
+    confidence: 0.95,
+    detections: 9,
+    source: 'fingerprint',
+  },
 ]
 
 function withTimestamps(job: Job, community: Community): Community {
   const stamp = (h: Hint): Hint => ({
     ...h,
     timestamp_url:
-      job.source_type === 'youtube' && h.start_s !== null ? `${job.source}&t=${Math.floor(h.start_s)}s` : null,
+      job.source_type === 'youtube' && h.start_s !== null
+        ? `${job.source}&t=${Math.floor(h.start_s)}s`
+        : null,
   })
   return {
     ...community,
@@ -70,7 +200,9 @@ function withTimestamps(job: Job, community: Community): Community {
 
 function decorate(job: Job, rows: typeof SAMPLE, community: Community): Entry[] {
   // Como en Python: no se sugiere un track que la huella ya ha identificado en el set.
-  const known = new Set(rows.filter((r) => r.source !== 'unknown').map((r) => r.title.toLowerCase()))
+  const known = new Set(
+    rows.filter((r) => r.source !== 'unknown').map((r) => r.title.toLowerCase()),
+  )
   const all = [...community.tracklist, ...community.mentions].filter(
     (h) => !known.has(h.title.toLowerCase()),
   )
@@ -83,7 +215,10 @@ function decorate(job: Job, rows: typeof SAMPLE, community: Community): Entry[] 
     suggestions:
       row.source === 'unknown'
         ? all
-            .filter((h) => h.start_s !== null && h.start_s >= row.start_s - 45 && h.start_s <= row.end_s + 45)
+            .filter(
+              (h) =>
+                h.start_s !== null && h.start_s >= row.start_s - 45 && h.start_s <= row.end_s + 45,
+            )
             .sort((a, b) => Number(a.is_id) - Number(b.is_id) || b.likes - a.likes)
         : [],
   }))
@@ -109,11 +244,23 @@ export function createMockApi(options: MockOptions = {}): RawApi {
   }
   let settings: SettingsView = {
     values: {
-      provider: 'shazam', window_s: 12, step_s: 30, concurrency: null, min_interval_s: null,
-      daily_query_budget: null, min_confidence: 0.5, max_gap_segments: 2,
-      unknown_min_segments: 3, mark_unknown_edges: false, community_enabled: true, community_max_comments: 300,
-      acrcloud_host: 'identify-eu-west-1.acrcloud.com', audd_confidence: 0.45,
-      shazam_confidence: 0.45, cost_per_query_acrcloud: 0, cost_per_query_audd: 0,
+      provider: 'shazam',
+      window_s: 12,
+      step_s: 30,
+      concurrency: null,
+      min_interval_s: null,
+      daily_query_budget: null,
+      min_confidence: 0.5,
+      max_gap_segments: 2,
+      unknown_min_segments: 3,
+      mark_unknown_edges: false,
+      community_enabled: true,
+      community_max_comments: 300,
+      acrcloud_host: 'identify-eu-west-1.acrcloud.com',
+      audd_confidence: 0.45,
+      shazam_confidence: 0.45,
+      cost_per_query_acrcloud: 0,
+      cost_per_query_audd: 0,
     },
     secrets,
     effective_limits: { concurrency: 1, min_interval_s: 1.5 },
@@ -170,11 +317,17 @@ export function createMockApi(options: MockOptions = {}): RawApi {
       clearInterval(timer)
       timers.delete(id)
       // Solo los enlaces tienen comentarios; los archivos propios no.
-      const community = job.source_type === 'upload' ? EMPTY_COMMUNITY : withTimestamps(job, SAMPLE_COMMUNITY)
+      const community =
+        job.source_type === 'upload' ? EMPTY_COMMUNITY : withTimestamps(job, SAMPLE_COMMUNITY)
       communities.set(id, community)
       const entries = decorate(job, SAMPLE, community)
       tracks.set(id, entries)
-      update(id, { status: 'done', progress: 100, message: 'Listo', finished_at: new Date().toISOString() })
+      update(id, {
+        status: 'done',
+        progress: 100,
+        message: 'Listo',
+        finished_at: new Date().toISOString(),
+      })
       emitBridgeEvent({ type: 'tracklist', job_id: id, live: false, tracklist: entries })
       emitBridgeEvent({ type: 'community', job_id: id, community })
     }, tickMs)
@@ -184,10 +337,25 @@ export function createMockApi(options: MockOptions = {}): RawApi {
   const create = (source: string, type: Job['source_type'], canonical: string | null): Job => {
     const id = nextId++
     const job: Job = {
-      id, source_type: type, source, canonical_id: canonical, title: null, uploader: null,
-      duration_s: null, provider: settings.values.provider, status: 'queued', progress: 0,
-      message: 'En cola', error: null, queries_used: 0, retries: 0, estimated_cost: 0,
-      cached: false, created_at: new Date().toISOString(), started_at: null, finished_at: null,
+      id,
+      source_type: type,
+      source,
+      canonical_id: canonical,
+      title: null,
+      uploader: null,
+      duration_s: null,
+      provider: settings.values.provider,
+      status: 'queued',
+      progress: 0,
+      message: 'En cola',
+      error: null,
+      queries_used: 0,
+      retries: 0,
+      estimated_cost: 0,
+      cached: false,
+      created_at: new Date().toISOString(),
+      started_at: null,
+      finished_at: null,
     }
     jobs.set(id, job)
     emitBridgeEvent({ type: 'job', job })
@@ -209,11 +377,17 @@ export function createMockApi(options: MockOptions = {}): RawApi {
   return {
     async create_job(url) {
       const match = /(?:v=|youtu\.be\/)([A-Za-z0-9_-]{11})/.exec(url)
-      if (!/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|soundcloud\.com|on\.soundcloud\.com)\//i.test(url.trim())) {
+      if (
+        !/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be|soundcloud\.com|on\.soundcloud\.com)\//i.test(
+          url.trim(),
+        )
+      ) {
         return fail('Solo se aceptan enlaces de YouTube o SoundCloud.')
       }
       if (match) {
-        return ok(create(`https://www.youtube.com/watch?v=${match[1]}`, 'youtube', `yt:${match[1]}`))
+        return ok(
+          create(`https://www.youtube.com/watch?v=${match[1]}`, 'youtube', `yt:${match[1]}`),
+        )
       }
       return ok(create(url.trim(), 'soundcloud', null))
     },
@@ -229,7 +403,9 @@ export function createMockApi(options: MockOptions = {}): RawApi {
     },
     async cancel_job(id) {
       clearInterval(timers.get(id))
-      return jobs.has(id) ? ok(update(id, { status: 'cancelled', message: 'Cancelado' })) : fail('El trabajo no existe.')
+      return jobs.has(id)
+        ? ok(update(id, { status: 'cancelled', message: 'Cancelado' }))
+        : fail('El trabajo no existe.')
     },
     async delete_job(id) {
       clearInterval(timers.get(id))
@@ -241,9 +417,18 @@ export function createMockApi(options: MockOptions = {}): RawApi {
       const d = detail(id)
       if (!d) return fail('El trabajo no existe.')
       const lines = d.tracklist.map(
-        (e) => `${Math.floor(e.start_s / 60).toString().padStart(2, '0')}:${Math.floor(e.start_s % 60).toString().padStart(2, '0')} ${e.source === 'unknown' ? 'ID – ID' : `${e.artist} – ${e.title}`}`,
+        (e) =>
+          `${Math.floor(e.start_s / 60)
+            .toString()
+            .padStart(2, '0')}:${Math.floor(e.start_s % 60)
+            .toString()
+            .padStart(2, '0')} ${e.source === 'unknown' ? 'ID – ID' : `${e.artist} – ${e.title}`}`,
       )
-      return ok({ filename: `tracklist.${fmt}`, media_type: 'text/plain', content: lines.join('\n') })
+      return ok({
+        filename: `tracklist.${fmt}`,
+        media_type: 'text/plain',
+        content: lines.join('\n'),
+      })
     },
     async save_export(_id, fmt) {
       return ok({ path: `C:\\Users\\demo\\Downloads\\tracklist.${fmt}` })
@@ -267,7 +452,12 @@ export function createMockApi(options: MockOptions = {}): RawApi {
     },
     async get_budget() {
       const limit = settings.values.daily_query_budget
-      return ok({ provider: settings.values.provider, used_today: used, limit, remaining: limit === null ? null : Math.max(0, limit - used) })
+      return ok({
+        provider: settings.values.provider,
+        used_today: used,
+        limit,
+        remaining: limit === null ? null : Math.max(0, limit - used),
+      })
     },
     async open_external(url) {
       window.open(url, '_blank', 'noopener')

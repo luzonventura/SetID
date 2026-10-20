@@ -125,7 +125,10 @@ export function Home() {
     <div className="space-y-16">
       <section aria-labelledby="hero" className="relative">
         <p className="label animate-rise">Extractor de tracklists</p>
-        <h1 id="hero" className="display mt-4 animate-rise text-[clamp(3rem,10vw,8.5rem)] [animation-delay:60ms]">
+        <h1
+          id="hero"
+          className="display mt-4 animate-rise text-[clamp(3rem,10vw,8.5rem)] [animation-delay:60ms]"
+        >
           ¿Qué está
           <br />
           <span className="text-signal">pinchando?</span>

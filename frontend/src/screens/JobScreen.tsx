@@ -44,7 +44,9 @@ function Phases({ job }: { job: Job }) {
           return (
             <li key={phase.status} aria-current={now ? 'step' : undefined}>
               <div className={`h-1 ${done ? 'bg-signal' : now ? 'bg-signal/50' : 'bg-line'}`}>
-                {now && <div className="h-full bg-signal" style={{ width: `${phaseProgress(job)}%` }} />}
+                {now && (
+                  <div className="h-full bg-signal" style={{ width: `${phaseProgress(job)}%` }} />
+                )}
               </div>
               <span className={`label mt-2 block ${now || done ? 'text-chalk' : ''}`}>
                 {String(i + 1).padStart(2, '0')} {phase.text}
@@ -137,7 +139,8 @@ export function JobScreen({ id }: { id: number }) {
   const tracks = entries.filter((e) => e.source !== 'unknown').length
   const communityTotal = community ? community.tracklist.length + community.mentions.length : 0
   const running = isActive(job.status) || job.status === 'queued'
-  const title = job.title ?? (job.source_type === 'upload' ? fileName(job.source) : 'Leyendo metadatos…')
+  const title =
+    job.title ?? (job.source_type === 'upload' ? fileName(job.source) : 'Leyendo metadatos…')
   const scanned =
     job.status === 'analyzing' && job.duration_s
       ? (Math.max(0, job.progress - 30) / 65) * job.duration_s
@@ -172,7 +175,9 @@ export function JobScreen({ id }: { id: number }) {
 
   const select = (position: number) => {
     setHighlight(position)
-    document.getElementById(`track-${position}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    document
+      .getElementById(`track-${position}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
   return (
@@ -255,7 +260,9 @@ export function JobScreen({ id }: { id: number }) {
                   }`}
                 >
                   {text}
-                  {count !== null && <span className="timecode ml-2 align-top text-xs text-fog">{count}</span>}
+                  {count !== null && (
+                    <span className="timecode ml-2 align-top text-xs text-fog">{count}</span>
+                  )}
                 </button>
               ))}
             </div>
@@ -271,7 +278,12 @@ export function JobScreen({ id }: { id: number }) {
           <Tracklist entries={entries} live={running} highlight={highlight} />
         </div>
         {communityTotal > 0 && community && (
-          <div role="tabpanel" id="panel-community" aria-labelledby="tab-community" hidden={tab !== 'community'}>
+          <div
+            role="tabpanel"
+            id="panel-community"
+            aria-labelledby="tab-community"
+            hidden={tab !== 'community'}
+          >
             <CommunityPanel community={community} />
           </div>
         )}
@@ -281,7 +293,11 @@ export function JobScreen({ id }: { id: number }) {
 
       <div className="flex flex-wrap gap-3 border-t border-line pt-6">
         {running && (
-          <button type="button" className="btn-danger" onClick={() => act(() => api.cancelJob(job.id))}>
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={() => act(() => api.cancelJob(job.id))}
+          >
             Cancelar
           </button>
         )}
