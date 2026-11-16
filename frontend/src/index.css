@@ -24,7 +24,6 @@
   --color-paper: #ece8e0;
   --color-signal: #7dd3fc;
   --color-signal-deep: #38bdf8;
-  --color-signal-soft: rgb(125 211 252 / 0.1);
   --color-ok: #a3e6b4;
   --color-warn: #f2cd6b;
   --color-bad: #ff7a85;
@@ -34,13 +33,10 @@
   --font-sans: 'Geist Variable', system-ui, sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
 
-  --radius-panel: 3px;
-
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 
   --animate-rise: rise 0.8s var(--ease-out-expo) both;
   --animate-reveal: reveal 0.9s var(--ease-out-expo) both;
-  --animate-wipe: wipe 0.9s var(--ease-out-expo) both;
   --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
   --animate-scan: scan 1.4s linear infinite;
   --animate-marquee: marquee 60s linear infinite;
@@ -63,15 +59,6 @@
     }
     to {
       transform: none;
-    }
-  }
-  /* Un filete que se dibuja de izquierda a derecha. */
-  @keyframes wipe {
-    from {
-      transform: scaleX(0);
-    }
-    to {
-      transform: scaleX(1);
     }
   }
   @keyframes pulse-dot {
@@ -230,11 +217,6 @@
   }
 }
 
-/* Panel mate: superficie opaca con filete. (Se sigue llamando «glass» por compatibilidad.) */
-@utility glass {
-  @apply border border-line bg-booth;
-  border-radius: var(--radius-panel);
-}
 @utility btn {
   @apply inline-flex items-center justify-center gap-2 rounded-[3px] border px-4 py-2.5 font-mono text-[0.72rem] font-medium tracking-[0.1em] uppercase transition-[background-color,color,border-color,transform] duration-200 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-35;
 }

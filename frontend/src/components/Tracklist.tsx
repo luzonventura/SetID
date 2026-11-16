@@ -7,13 +7,7 @@ import { ExternalLink } from './ui'
 const LEVEL_TEXT = { high: 'alta', medium: 'media', low: 'baja' }
 const LEVEL_COLOR = { high: 'bg-signal', medium: 'bg-signal/60', low: 'bg-warn/80' }
 
-export function ConfidenceMeter({
-  value,
-  detections,
-}: {
-  value: number | null
-  detections: number
-}) {
+function ConfidenceMeter({ value, detections }: { value: number | null; detections: number }) {
   if (value === null) return null
   const level = confidenceLevel(value)
   const filled = Math.max(1, Math.round(value * 5))

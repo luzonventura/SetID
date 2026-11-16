@@ -7,7 +7,7 @@ import { ExternalLink } from './ui'
 
 const KIND_TEXT = { tracklist: 'Tracklist', comment: 'Comentario', reply: 'Respuesta' }
 
-export function UnreleasedTag() {
+function UnreleasedTag() {
   return (
     <span className="border border-warn/50 px-1.5 py-0.5 font-mono text-[0.58rem] tracking-[0.12em] text-warn uppercase">
       unreleased

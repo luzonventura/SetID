@@ -8,13 +8,16 @@
 Extractor de tracklists de sets de DJ para Windows. Pegas un enlace de YouTube o SoundCloud, o
 eliges un archivo de audio, y SetID devuelve el tracklist con marcas de tiempo.
 
-- **App de escritorio** (React en WebView2) y **CLI**.
+- **App de escritorio** (React en WebView2, con un tocadiscos 3D que dibuja el set sobre el
+  disco) y **CLI**.
 - Reconocimiento con **Shazam**, **ACRCloud** o **AudD**, con límites de ritmo y presupuesto
   diario de consultas.
 - Agregación tolerante a huecos, falsos positivos y transiciones; los tramos sin identificar
   aparecen como `ID – ID`.
 - **Tracklist de la comunidad**: lee la descripción y los comentarios del vídeo como
   sugerencias sin verificar.
+- **Carátulas** de cada track: las que dan Shazam y AudD y, si falta alguna, la del catálogo
+  público de iTunes.
 - Exportación a TXT, CSV, JSON y M3U, con enlaces de búsqueda en Beatport, Spotify y YouTube.
 - El audio nunca se guarda: se borra al terminar cada trabajo.
 
@@ -112,6 +115,14 @@ Todo aparece en la pestaña **Comunidad** y como sugerencia en los tramos `ID �
 marcado como **sin verificar** y sin mezclarse con lo que identifica la huella. Se desactiva en
 Ajustes o con `--no-community`.
 
+## Carátulas
+
+Shazam y AudD devuelven la carátula junto con el track. Para las que falten, al terminar el
+análisis SetID busca artista y título en la API pública de búsqueda de iTunes (sin clave ni
+cuenta), a un ritmo bajo y guardando el resultado en la base de datos para no repetir
+consultas. Solo se aceptan imágenes servidas por https desde la CDN de Apple
+(`*.mzstatic.com`). La búsqueda en iTunes se desactiva en Ajustes.
+
 ## Arquitectura
 
 ```mermaid
@@ -130,7 +141,7 @@ Los datos de la app viven en `%LOCALAPPDATA%\SetID\`:
 
 | Ruta             | Contenido                                                 |
 | ---------------- | --------------------------------------------------------- |
-| `setid.db`       | Historial, tracklists, caché y presupuesto diario         |
+| `setid.db`       | Historial, tracklists, cachés y presupuesto diario        |
 | `settings.json`  | Ajustes (las claves van al Administrador de credenciales) |
 | `logs\setid.log` | Registro en JSON, rotativo y sin secretos                 |
 | `tmp\`           | Audio temporal; se borra al terminar cada trabajo         |
@@ -152,9 +163,10 @@ SetID/
     └── src/
         ├── api/          Puente tipado y backend simulado para el navegador
         ├── components/   Piezas de la interfaz
-        ├── lib/          Formato de tiempos y enrutado
+        ├── lib/          Formato de tiempos, carátulas y enrutado
         ├── screens/      Inicio, trabajo y ajustes
         ├── state/        Estado de los trabajos (reducer + contexto)
+        ├── three/        Tocadiscos 3D (React Three Fiber) y sus texturas
         └── test/
 ```
 

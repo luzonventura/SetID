@@ -67,10 +67,6 @@ class PreparedInput:
     origin: CanonicalSource | Path
     description: str | None = field(default=None, repr=False)
 
-    @property
-    def is_upload(self) -> bool:
-        return isinstance(self.origin, Path)
-
 
 @dataclass
 class PipelineResult:

@@ -15,7 +15,6 @@ class SourceType(StrEnum):
 
 class EntrySource(StrEnum):
     FINGERPRINT = "fingerprint"
-    COMMUNITY = "community"
     UNKNOWN = "unknown"
 
 

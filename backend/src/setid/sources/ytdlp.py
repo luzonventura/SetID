@@ -29,7 +29,6 @@ class SourceMetadata(BaseModel):
     uploader: str | None = None
     duration_s: float
     description: str | None = None
-    webpage_url: str | None = None
 
 
 def parse_metadata(raw_json: str, *, max_duration_s: float) -> SourceMetadata:
@@ -58,7 +57,6 @@ def parse_metadata(raw_json: str, *, max_duration_s: float) -> SourceMetadata:
             uploader=info.get("uploader") or info.get("channel"),
             duration_s=float(duration),
             description=info.get("description"),
-            webpage_url=info.get("webpage_url"),
         )
     except ValidationError as exc:
         raise SourceRejected("yt-dlp devolvió metadatos no válidos.") from exc

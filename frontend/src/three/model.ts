@@ -19,7 +19,7 @@ const BAND_GAP = 0.009
 /** Pivote del brazo respecto al centro del plato, en el plano (x, z). */
 export const ARM_PIVOT = { x: 1.91, z: -0.95 } as const
 /** Distancia del pivote a la aguja. */
-export const ARM_LENGTH = 2.3
+const ARM_LENGTH = 2.3
 /** Radio «de reposo»: la aguja fuera del disco, sobre el soporte del brazo. */
 export const ARM_REST_R = 2.2
 

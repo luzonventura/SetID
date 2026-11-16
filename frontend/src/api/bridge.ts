@@ -43,7 +43,7 @@ declare global {
   }
 }
 
-export const EVENT_NAME = 'setid:event'
+const EVENT_NAME = 'setid:event'
 
 export class BridgeError extends Error {}
 

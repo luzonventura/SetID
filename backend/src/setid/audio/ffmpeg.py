@@ -29,7 +29,6 @@ class InvalidAudioError(ValueError):
 class AudioInfo(BaseModel):
     format_name: str
     duration_s: float
-    codec: str
 
 
 def ffmpeg_input(path: Path) -> str:
@@ -53,9 +52,7 @@ def parse_probe(raw_json: str) -> AudioInfo:
         duration = 0.0
     if duration <= 0:
         raise InvalidAudioError("No se conoce la duración del audio.")
-    return AudioInfo(
-        format_name=format_name, duration_s=duration, codec=str(audio[0].get("codec_name"))
-    )
+    return AudioInfo(format_name=format_name, duration_s=duration)
 
 
 def probe(path: Path, *, timeout: float = 60.0) -> AudioInfo:

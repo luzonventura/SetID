@@ -5,7 +5,7 @@ import type { AppInfo, Budget } from '../api/types'
 import { href, type Route } from '../lib/router'
 
 /** El mismo trazo que el icono de la app (backend/scripts/make_icon.py), sin el fondo. */
-export function Logo({ className = '' }: { className?: string }) {
+function Logo({ className = '' }: { className?: string }) {
   return (
     <svg viewBox="40 40 176 176" aria-hidden className={className}>
       <path

@@ -137,7 +137,7 @@ export function RecordStage({
       {tip &&
         createPortal(
           <div
-            className="pointer-events-none fixed z-50 flex -translate-x-1/2 -translate-y-[120%] items-center gap-3 rounded-xl border border-line-strong bg-ink/90 p-2 pr-4 shadow-2xl backdrop-blur-md"
+            className="pointer-events-none fixed z-50 flex -translate-x-1/2 -translate-y-[120%] items-center gap-3 border border-line-strong bg-ink p-2 pr-4 shadow-2xl"
             // Centrado sobre el cursor, sin salirse de la ventana (mide hasta ~340 px).
             style={{
               left: Math.min(Math.max(tip.x, 175), window.innerWidth - 175),
@@ -150,7 +150,7 @@ export function RecordStage({
                 artist={tip.band.label}
                 title=""
                 size={48}
-                rounded="rounded-md"
+                rounded="rounded-[2px]"
               />
             )}
             <span className="min-w-0">

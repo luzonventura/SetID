@@ -4,7 +4,7 @@ export type JobStatus =
   'queued' | 'downloading' | 'analyzing' | 'aggregating' | 'done' | 'failed' | 'cancelled'
 
 export type SourceType = 'youtube' | 'soundcloud' | 'upload'
-export type EntrySource = 'fingerprint' | 'community' | 'unknown'
+export type EntrySource = 'fingerprint' | 'unknown'
 export type ExportFormat = 'txt' | 'csv' | 'json' | 'm3u'
 export type ProviderName = 'fake' | 'acrcloud' | 'audd' | 'shazam'
 
@@ -145,8 +145,8 @@ export type BridgeEvent =
   | { type: 'file_dropped'; job: Job }
   | { type: 'error'; error: string }
 
-export const ACTIVE_STATUSES: readonly JobStatus[] = ['downloading', 'analyzing', 'aggregating']
-export const FINAL_STATUSES: readonly JobStatus[] = ['done', 'failed', 'cancelled']
+const ACTIVE_STATUSES: readonly JobStatus[] = ['downloading', 'analyzing', 'aggregating']
+const FINAL_STATUSES: readonly JobStatus[] = ['done', 'failed', 'cancelled']
 
 export const isActive = (s: JobStatus) => ACTIVE_STATUSES.includes(s)
 export const isFinal = (s: JobStatus) => FINAL_STATUSES.includes(s)

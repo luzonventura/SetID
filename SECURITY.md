@@ -21,7 +21,8 @@ flowchart LR
     API --> CORE["JobManager · Pipeline"]
     CORE -- "procesos sin shell<br/>(frontera 2)" --> EXT["yt-dlp · ffmpeg · ffprobe"]
     EXT -- "contenido no confiable<br/>(frontera 3)" --> NET["YouTube · SoundCloud"]
-    CORE -- "HTTPS<br/>(frontera 4)" --> PROV["Shazam · ACRCloud · AudD"]
+    CORE -- "HTTPS<br/>(frontera 4)" --> PROV["Shazam · ACRCloud · AudD<br/>iTunes (carátulas)"]
+    UI -- "solo imágenes<br/>(frontera 5)" --> CDN["CDN de Apple<br/>*.mzstatic.com"]
     CORE --> DATA[("%LOCALAPPDATA%\SetID<br/>setid.db · settings.json<br/>logs · tmp")]
     API --> CRED["Administrador de<br/>credenciales"]
 ```
@@ -35,7 +36,8 @@ flowchart LR
 
 **Entradas no confiables:** el enlace que pega el usuario, el archivo que elige o suelta, los
 metadatos y comentarios que devuelve yt-dlp (títulos, descripciones…), el propio audio que
-procesa ffmpeg y las respuestas de los proveedores de reconocimiento.
+procesa ffmpeg y las respuestas de los proveedores de reconocimiento y de la búsqueda de
+iTunes (incluidas las URL de las carátulas).
 
 **Fuera de alcance:** un atacante con acceso al usuario de Windows (puede leer la base de datos
 y el Administrador de credenciales igual que la app) y la seguridad de WebView2, Python o
@@ -82,6 +84,8 @@ registrado en `setid.db` (fuente, proveedor, estado, mensajes de error) y los ev
 | Ruta real de un archivo soltado | Solo la conoce Python (`pywebviewFullPath`); la página recibe el trabajo ya creado (`handle_drop`). |
 | Las claves de ACRCloud acaban en otro servidor cambiando el host en Ajustes | El host solo se acepta si tiene la forma `identify-*.acrcloud.com` (o `.cn`); si no, el proveedor se niega a enviar nada (`providers/acrcloud.py`). |
 | Envío del audio a terceros | Con Shazam la huella se calcula en local y solo se envía la firma. Con ACRCloud se firma la petición con HMAC y el secreto no viaja. Los proveedores solo reciben fragmentos cortos del set. |
+| Una URL de carátula maliciosa (otro host, `javascript:`, rastreo) llega a un `<img>` | La URL se valida dos veces, en Python (`artwork.py`, `safe_artwork_url`) y en la interfaz (`lib/cover.ts`): solo `https`, sin credenciales ni puerto y con host `*.mzstatic.com`; se descartan query y fragmento. La CSP solo permite imágenes de ese origen y se cargan con `referrerPolicy="no-referrer"`. |
+| La búsqueda de carátulas revela qué se escucha | A iTunes solo se envían artista y título de tracks ya identificados, nunca audio ni el enlace del set. Se hace como mucho una consulta cada 3,2 s, el resultado se guarda en caché y se puede desactivar en Ajustes (`artwork_lookup`). |
 | Datos de navegación en WebView2 | La ventana se abre con `private_mode=True`. |
 
 ### Denial of service (denegación de servicio)
@@ -99,7 +103,7 @@ registrado en `setid.db` (fuente, proveedor, estado, mensajes de error) y los ev
 | Amenaza | Mitigación |
 |---------|------------|
 | JavaScript de la página llama a métodos internos de Python | pywebview expone todos los métodos públicos del objeto **y de sus atributos públicos**, así que todo el estado de `Api` va en atributos privados (`_manager`, `_store`, `_window`…). Cada método valida tipos, rangos y enums antes de hacer nada (`app/bridge.py`). |
-| JavaScript inyectado (XSS) que usa el puente | CSP en el `index.html` del build: `default-src 'self'`, `script-src 'self'`, sin `unsafe-inline` ni `unsafe-eval`, `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`, `frame-src 'none'` (`frontend/vite.config.ts`). |
+| JavaScript inyectado (XSS) que usa el puente | CSP en el `index.html` del build: `default-src 'self'`, `script-src 'self'`, sin `unsafe-inline` ni `unsafe-eval`, `img-src 'self' data: https://*.mzstatic.com` (única excepción, para las carátulas), `connect-src 'self'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`, `frame-src 'none'` (`frontend/vite.config.ts`). |
 | Abrir URLs o programas arbitrarios desde la interfaz (`file:///…calc.exe`) | `open_external` solo abre en el navegador del sistema URLs `https` sin credenciales ni puerto y con host en una lista blanca: YouTube, SoundCloud, Beatport y Spotify (`links.py`, `is_allowed_external`). |
 | Herramientas de desarrollo en producción | Las DevTools solo se abren con `SETID_DEBUG`. |
 
