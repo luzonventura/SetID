@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 
+from setid.artwork import safe_artwork_url
 from setid.models import Match
 from setid.providers.base import (
     PermanentProviderError,
@@ -47,6 +48,10 @@ def parse_response(payload: Any, confidence: float, provider: str = "shazam") ->
         album=album,
         confidence=confidence,
         provider=provider,
+        cover_url=safe_artwork_url(
+            (track.get("images") or {}).get("coverarthq")
+            or (track.get("images") or {}).get("coverart")
+        ),
     )
 
 

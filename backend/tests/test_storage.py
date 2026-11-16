@@ -140,3 +140,28 @@ def test_json_log_format() -> None:
     assert payload["msg"] == "hola token=***"
     assert payload["job_id"] == 3
     assert payload["level"] == "info"
+
+
+def test_artwork_store_caches_and_retries_old_misses(tmp_path: Path) -> None:
+    from datetime import timedelta
+
+    from sqlmodel import Session
+
+    from setid.db.tables import Artwork, utcnow
+    from setid.jobs.repository import MISS_TTL, ArtworkStore
+
+    engine = open_database(tmp_path / "setid.db")
+    store = ArtworkStore(engine)
+    assert store.get("a|t") == (False, None)
+    store.put("a|t", "https://is1-ssl.mzstatic.com/x/600x600bb.jpg")
+    assert store.get("a|t") == (True, "https://is1-ssl.mzstatic.com/x/600x600bb.jpg")
+    store.put("b|t", None)
+    assert store.get("b|t") == (True, None)
+    with Session(engine) as session:
+        row = session.get(Artwork, "b|t")
+        assert row is not None
+        row.fetched_at = utcnow() - MISS_TTL - timedelta(days=1)
+        session.add(row)
+        session.commit()
+    assert store.get("b|t") == (False, None)  # sin carátula hace mucho: se vuelve a buscar
+    engine.dispose()

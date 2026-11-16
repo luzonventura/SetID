@@ -39,6 +39,11 @@ export function sourceLabel(type: 'youtube' | 'soundcloud' | 'upload'): string {
   return { youtube: 'YouTube', soundcloud: 'SoundCloud', upload: 'Archivo' }[type]
 }
 
+/** Número de catálogo de un trabajo, como el de un vinilo: SID-007. */
+export function catalogNumber(id: number): string {
+  return `SID-${String(id).padStart(3, '0')}`
+}
+
 export function fileName(path: string): string {
   return path.split(/[\\/]/).pop() ?? path
 }

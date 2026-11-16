@@ -6,7 +6,7 @@ el icono se puede regenerar en cualquier máquina.
     uv run python scripts/make_icon.py
 
 El logo: un anillo (disco / barrido de reconocimiento) con un hueco arriba a la derecha y un
-punto central, en naranja «señal» sobre casi negro.
+punto central, en azul hielo sobre negro azulado.
 """
 
 from __future__ import annotations
@@ -30,8 +30,8 @@ CENTER = 128.0
 RING_R = 72.0
 GAP_FROM, GAP_TO = -80.0, -10.0  # grados; el hueco queda arriba a la derecha
 DOT_R = 23.0
-BG = (0x0A, 0x0A, 0x0B)
-INK = (0xFF, 0x5A, 0x1F)
+BG = (0x07, 0x09, 0x0C)
+INK = (0x7D, 0xD3, 0xFC)
 
 
 def stroke_for(size: int) -> float:
@@ -133,11 +133,11 @@ def svg() -> str:
     end = _cap(GAP_FROM)
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">'
-        f'<rect width="256" height="256" rx="{CORNER:g}" fill="#0a0a0b"/>'
+        f'<rect width="256" height="256" rx="{CORNER:g}" fill="#07090c"/>'
         f'<path d="M {start[0]:.2f} {start[1]:.2f} A {RING_R:g} {RING_R:g} 0 1 1 '
-        f'{end[0]:.2f} {end[1]:.2f}" fill="none" stroke="#ff5a1f" stroke-width="26" '
+        f'{end[0]:.2f} {end[1]:.2f}" fill="none" stroke="#7dd3fc" stroke-width="26" '
         'stroke-linecap="round"/>'
-        f'<circle cx="{CENTER:g}" cy="{CENTER:g}" r="{DOT_R:g}" fill="#ff5a1f"/>'
+        f'<circle cx="{CENTER:g}" cy="{CENTER:g}" r="{DOT_R:g}" fill="#7dd3fc"/>'
         "</svg>\n"
     )
 

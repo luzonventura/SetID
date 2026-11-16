@@ -161,3 +161,54 @@ describe('Tracklist', () => {
     expect(screen.getByText(/aparecerán aquí/)).toBeInTheDocument()
   })
 })
+
+describe('Turntable', () => {
+  it('falls back to the static record (with the set as grooves) without WebGL', async () => {
+    const { RecordStage } = await import('../components/RecordStage')
+    const { container } = render(
+      <RecordStage
+        mode="done"
+        duration={600}
+        scannedS={null}
+        entries={[
+          entry({ start_s: 0, end_s: 200 }),
+          entry({ position: 2, start_s: 200, end_s: 400 }),
+        ]}
+      />,
+    )
+    expect(container.querySelector('canvas')).toBeNull()
+    const svg = container.querySelector('svg')
+    expect(svg).not.toBeNull()
+    // Una circunferencia por banda, además de los surcos de fondo y la etiqueta.
+    expect(svg?.querySelectorAll('circle[stroke="var(--color-signal)"]').length).toBe(2)
+  })
+
+  it('puts the last finished set on the deck in Home', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.type(screen.getByLabelText(/Enlace de YouTube/), 'https://youtu.be/FNKmF7v7pNg')
+    await user.click(screen.getByRole('button', { name: /Identificar/ }))
+    await waitFor(
+      () => expect(screen.getByText('Listo', { selector: 'span' })).toBeInTheDocument(),
+      { timeout: 3000 },
+    )
+    window.location.hash = '#/'
+    const caption = (await screen.findByText('En el plato')).closest('figcaption') as HTMLElement
+    expect(within(caption).getByRole('link', { name: /Jorgesyn/ })).toHaveAttribute(
+      'href',
+      '#/job/1',
+    )
+  })
+})
+
+describe('Settings', () => {
+  it('only offers the free providers', async () => {
+    window.location.hash = '#/settings'
+    render(<App />)
+    const group = await screen.findByRole('group', { name: 'Proveedor de reconocimiento' })
+    expect(within(group).getByText('Shazam')).toBeInTheDocument()
+    expect(within(group).getByText('Demo')).toBeInTheDocument()
+    expect(within(group).queryByText('ACRCloud')).not.toBeInTheDocument()
+    expect(within(group).queryByText('AudD')).not.toBeInTheDocument()
+  })
+})

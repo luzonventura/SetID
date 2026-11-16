@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     community_max_comments: int = Field(default=300, ge=10, le=2000)
     community_timeout_s: float = Field(default=180.0, gt=0)
 
+    # Carátulas que faltan: búsqueda pública de iTunes (sin clave, solo artista y título)
+    artwork_lookup: bool = True
+
     # Límites de entrada
     max_duration_s: int = Field(default=4 * 3600, gt=0)
     max_file_bytes: int = Field(default=2 * 1024**3, gt=0)

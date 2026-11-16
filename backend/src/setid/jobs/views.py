@@ -72,6 +72,7 @@ class EntryView(BaseModel):
     confidence: float | None
     detections: int
     source: EntrySource
+    cover_url: str | None = None
     timestamp_url: str | None
     search: dict[str, str] | None
     # Solo en los ID – ID: lo que dice la comunidad sobre ese tramo (sin verificar).
@@ -119,6 +120,7 @@ def entry_from_row(row: TrackEntry) -> TracklistEntry:
         confidence=row.confidence,
         detections=row.detections,
         source=row.source,
+        cover_url=row.cover_url,
     )
 
 

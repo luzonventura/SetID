@@ -53,11 +53,11 @@ export function DropOverlay() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 z-[60] grid place-items-center bg-ink/85 backdrop-blur-sm"
+      className="pointer-events-none fixed inset-0 z-[60] grid place-items-center bg-ink/92"
     >
-      <div className="m-6 grid w-full max-w-3xl place-items-center border-2 border-dashed border-signal px-8 py-24 text-center">
+      <div className="m-6 grid w-full max-w-3xl place-items-center hatch animate-rise border border-signal px-8 py-24 text-center">
         <p className="label text-signal">Archivo de audio</p>
-        <p className="display mt-4 text-5xl sm:text-7xl">Suéltalo</p>
+        <p className="display mt-4 text-7xl sm:text-9xl">Suéltalo</p>
         <p className="mt-4 text-fog">WAV, MP3, FLAC, AIFF, M4A… se detecta por el contenido</p>
       </div>
     </div>

@@ -31,6 +31,7 @@ class Match(BaseModel):
     album: str | None = None
     confidence: float = Field(ge=0.0, le=1.0)
     provider: str
+    cover_url: str | None = None
 
 
 class SegmentResult(BaseModel):
@@ -59,6 +60,7 @@ class TracklistEntry(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     detections: int = 0
     source: EntrySource
+    cover_url: str | None = None
 
     @property
     def is_unknown(self) -> bool:

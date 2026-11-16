@@ -3,15 +3,18 @@ llamarlas desde cualquier hilo)."""
 
 from __future__ import annotations
 
+from datetime import UTC, timedelta
 from typing import Any
 
 from sqlalchemy import Engine
 from sqlmodel import Session, col, delete, select
 
 from setid.community import Hint
-from setid.db.tables import CommunityHint, Job, JobStatus, TrackEntry, utcnow
+from setid.db.tables import Artwork, CommunityHint, Job, JobStatus, TrackEntry, utcnow
 from setid.jobs.views import entry_from_row, hint_from_row, row_from_entry, row_from_hint
 from setid.models import TracklistEntry
+
+MISS_TTL = timedelta(days=30)
 
 
 class JobRepository:
@@ -98,6 +101,24 @@ class JobRepository:
             session.add_all(row_from_entry(job_id, e) for e in entries)
             session.commit()
 
+    def set_covers(self, job_id: int, covers: dict[int, str]) -> int:
+        """Pone carátula a las entradas indicadas por posición. Devuelve cuántas cambió."""
+        if not covers:
+            return 0
+        changed = 0
+        with Session(self.engine) as session:
+            query = select(TrackEntry).where(
+                TrackEntry.job_id == job_id, col(TrackEntry.position).in_(list(covers))
+            )
+            for row in session.exec(query):
+                url = covers[row.position]
+                if row.cover_url != url:
+                    row.cover_url = url
+                    session.add(row)
+                    changed += 1
+            session.commit()
+        return changed
+
     def delete(self, job_id: int) -> bool:
         with Session(self.engine) as session:
             job = session.get(Job, job_id)
@@ -120,4 +141,33 @@ class JobRepository:
         with Session(self.engine) as session:
             session.exec(delete(CommunityHint).where(col(CommunityHint.job_id) == job_id))
             session.add_all(row_from_hint(job_id, h) for h in hints)
+            session.commit()
+
+
+class ArtworkStore:
+    """Caché persistente de búsquedas de carátulas (implementa ``ArtworkCache``)."""
+
+    def __init__(self, engine: Engine) -> None:
+        self.engine = engine
+
+    def get(self, key: str) -> tuple[bool, str | None]:
+        with Session(self.engine) as session:
+            row = session.get(Artwork, key)
+            if row is None:
+                return False, None
+            if row.url is None:
+                # Una búsqueda sin resultado se repite pasado un tiempo: puede haber salido.
+                fetched = row.fetched_at
+                if fetched.tzinfo is None:
+                    fetched = fetched.replace(tzinfo=UTC)
+                if utcnow() - fetched > MISS_TTL:
+                    return False, None
+            return True, row.url
+
+    def put(self, key: str, url: str | None) -> None:
+        with Session(self.engine) as session:
+            row = session.get(Artwork, key) or Artwork(key=key)
+            row.url = url
+            row.fetched_at = utcnow()
+            session.add(row)
             session.commit()

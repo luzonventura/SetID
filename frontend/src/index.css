@@ -1,38 +1,77 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/archivo/wdth.css';
-@import '@fontsource-variable/martian-mono/wdth.css';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import '@fontsource/instrument-serif/latin-400-italic.css';
 
-/* Cabina de DJ: casi negro, un único acento "señal" y tipografía grotesca ancha. */
+/*
+ * Notas de carátula sobre el frontal de un equipo de sonido: negro mate, papel hueso para
+ * el texto, filetes finos y un único acento azul hielo (el LED). Titulares en Archivo
+ * condensada y en mayúsculas, como un cartel de club; una serif en cursiva para la voz
+ * humana; Geist Mono para todo lo que sea un dato.
+ *
+ * Nada de desenfoques ni cristal: son lo más caro de pintar y aquí todo se anima solo con
+ * transform y opacity para que vaya fluido en WebView2.
+ */
 @theme {
-  --color-ink: #0a0a0b;
-  --color-booth: #111113;
-  --color-deck: #18181b;
-  --color-line: #26262b;
-  --color-line-strong: #3a3a41;
-  --color-fog: #8c8c96;
-  --color-chalk: #ededef;
-  --color-signal: #ff5a1f;
-  --color-signal-soft: #ff5a1f1f;
-  --color-ok: #b5f23d;
-  --color-warn: #ffc23d;
-  --color-bad: #ff4d6d;
+  --color-ink: #09090a;
+  --color-booth: #0f1011;
+  --color-deck: #17181a;
+  --color-line: rgb(236 232 224 / 0.1);
+  --color-line-strong: rgb(236 232 224 / 0.22);
+  --color-fog: #8e8d88;
+  --color-chalk: #ece8e0;
+  --color-paper: #ece8e0;
+  --color-signal: #7dd3fc;
+  --color-signal-deep: #38bdf8;
+  --color-signal-soft: rgb(125 211 252 / 0.1);
+  --color-ok: #a3e6b4;
+  --color-warn: #f2cd6b;
+  --color-bad: #ff7a85;
 
   --font-display: 'Archivo Variable', 'Arial Narrow', sans-serif;
-  --font-sans: 'Archivo Variable', system-ui, sans-serif;
-  --font-mono: 'Martian Mono Variable', ui-monospace, monospace;
+  --font-serif: 'Instrument Serif', 'Times New Roman', serif;
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
 
-  --animate-rise: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-pulse-dot: pulse-dot 1.2s ease-in-out infinite;
-  --animate-scan: scan 1.6s linear infinite;
+  --radius-panel: 3px;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  --animate-rise: rise 0.8s var(--ease-out-expo) both;
+  --animate-reveal: reveal 0.9s var(--ease-out-expo) both;
+  --animate-wipe: wipe 0.9s var(--ease-out-expo) both;
+  --animate-pulse-dot: pulse-dot 1.4s ease-in-out infinite;
+  --animate-scan: scan 1.4s linear infinite;
+  --animate-marquee: marquee 60s linear infinite;
+  --animate-spin-slow: spin 9s linear infinite;
 
   @keyframes rise {
     from {
       opacity: 0;
-      transform: translateY(10px);
+      transform: translate3d(0, 18px, 0);
     }
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+  /* Una línea de titular que sube desde detrás de su propia máscara. */
+  @keyframes reveal {
+    from {
+      transform: translate3d(0, 105%, 0);
+    }
+    to {
+      transform: none;
+    }
+  }
+  /* Un filete que se dibuja de izquierda a derecha. */
+  @keyframes wipe {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
     }
   }
   @keyframes pulse-dot {
@@ -41,7 +80,7 @@
       opacity: 1;
     }
     50% {
-      opacity: 0.25;
+      opacity: 0.35;
     }
   }
   @keyframes scan {
@@ -52,27 +91,57 @@
       transform: translateX(400%);
     }
   }
+  @keyframes marquee {
+    to {
+      transform: translate3d(-50%, 0, 0);
+    }
+  }
+}
+
+/* Transición entre pantallas: la cabecera se queda quieta; el contenido cruza y sube. */
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0);
+  }
+}
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+}
+::view-transition-old(root) {
+  animation: vt-out 140ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+::view-transition-new(root) {
+  animation: vt-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+::view-transition-group(site-header) {
+  animation: none;
 }
 
 @layer base {
   html {
     color-scheme: dark;
     background: var(--color-ink);
+    scrollbar-color: #2a2b2e var(--color-ink);
+    scrollbar-width: thin;
   }
   body {
     @apply bg-ink text-chalk font-sans antialiased;
-    font-stretch: 100%;
     min-height: 100vh;
-    font-feature-settings: 'ss01', 'tnum';
+    font-feature-settings: 'ss01', 'cv11';
+    text-rendering: optimizeLegibility;
   }
-  /* Grano sutil, como el de un flyer impreso. */
+  /* Grano de papel, muy tenue. Es una imagen fija: se rasteriza una sola vez. */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
     pointer-events: none;
-    z-index: 50;
-    opacity: 0.06;
+    z-index: 70;
+    opacity: 0.05;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
   ::selection {
@@ -82,7 +151,6 @@
   :focus-visible {
     outline: 2px solid var(--color-signal);
     outline-offset: 3px;
-    border-radius: 2px;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -96,48 +164,89 @@
 }
 
 @layer components {
+  /* Titular de cartel: condensada, pesada, en mayúsculas y muy apretada de interlínea. */
   .display {
     font-family: var(--font-display);
-    font-stretch: 125%;
-    font-weight: 800;
-    letter-spacing: -0.02em;
+    font-stretch: 68%;
+    font-weight: 780;
+    letter-spacing: -0.012em;
+    line-height: 0.88;
     text-transform: uppercase;
-    line-height: 0.92;
+  }
+  /* La voz humana: serif en cursiva, en minúsculas, para contrastar con el cartel. */
+  .voice {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    text-transform: none;
   }
   .label {
     font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    letter-spacing: 0.08em;
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--color-fog);
   }
   .timecode {
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
-    font-stretch: 100%;
   }
   .hatch {
     background-image: repeating-linear-gradient(
       -45deg,
       transparent 0 5px,
-      rgb(255 255 255 / 0.07) 5px 6px
+      rgb(236 232 224 / 0.07) 5px 6px
     );
+  }
+  /* Máscara para titulares que entran línea a línea. */
+  .line-mask {
+    display: block;
+    /* Solo se recorta por abajo (por donde entra la línea): la cursiva y los signos que
+       sobresalen por los lados o por arriba no se cortan. */
+    clip-path: inset(-0.3em -100vw 0 -100vw);
+    padding-bottom: 0.1em;
+  }
+  .line-mask > * {
+    display: block;
+    animation: var(--animate-reveal);
+  }
+  /* Regla graduada, como la escala de un fader. */
+  .ruler {
+    background-image: repeating-linear-gradient(
+      90deg,
+      var(--color-line-strong) 0 1px,
+      transparent 1px 10px
+    );
+  }
+  /* Enlace de texto con subrayado que se dibuja al pasar. */
+  .link {
+    background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+    transition: background-size 0.35s var(--ease-out-expo);
+  }
+  .link:hover,
+  .link:focus-visible {
+    background-size: 100% 1px;
   }
 }
 
+/* Panel mate: superficie opaca con filete. (Se sigue llamando «glass» por compatibilidad.) */
+@utility glass {
+  @apply border border-line bg-booth;
+  border-radius: var(--radius-panel);
+}
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 border px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40;
-  font-stretch: 110%;
+  @apply inline-flex items-center justify-center gap-2 rounded-[3px] border px-4 py-2.5 font-mono text-[0.72rem] font-medium tracking-[0.1em] uppercase transition-[background-color,color,border-color,transform] duration-200 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-35;
 }
 @utility btn-primary {
-  @apply btn border-signal bg-signal text-ink hover:bg-[#ff7845];
+  @apply btn border-paper bg-paper text-ink hover:border-signal hover:bg-signal;
 }
 @utility btn-ghost {
-  @apply btn border-line-strong text-chalk hover:border-chalk;
+  @apply btn border-line-strong text-chalk hover:border-paper hover:bg-paper hover:text-ink;
 }
 @utility btn-danger {
-  @apply btn border-line-strong text-fog hover:border-bad hover:text-bad;
+  @apply btn border-line-strong text-fog hover:border-bad hover:bg-bad hover:text-ink;
 }
 @utility field {
-  @apply w-full border border-line-strong bg-booth px-3 py-2.5 text-chalk placeholder:text-fog/70 focus:border-signal focus:outline-none;
+  @apply w-full rounded-[3px] border border-line-strong bg-ink px-3.5 py-2.5 text-chalk transition-colors placeholder:text-fog/60 focus:border-signal focus:outline-none;
 }

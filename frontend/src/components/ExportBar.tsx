@@ -43,15 +43,20 @@ export function ExportBar({ jobId }: { jobId: number }) {
   }
 
   return (
-    <section aria-labelledby="export" className="border border-line bg-booth p-5">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 id="export" className="label">
-          Exportar
-        </h2>
+    <section aria-labelledby="export" className="bg-paper px-6 py-8 text-ink sm:px-10 sm:py-10">
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <div>
+          <h2 id="export" className="display text-[clamp(2.6rem,5vw,4.6rem)]">
+            Llévatelo
+          </h2>
+          <p className="voice mt-1 text-2xl text-ink/60">
+            cópialo para un comentario o guárdalo como archivo.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
-            className="btn-primary"
+            className="btn border-ink bg-ink text-paper hover:border-signal-deep hover:bg-signal-deep hover:text-ink"
             onClick={() =>
               run(async () => {
                 const file = await api.exportJob(jobId, 'txt')
@@ -66,7 +71,7 @@ export function ExportBar({ jobId }: { jobId: number }) {
             <button
               key={fmt}
               type="button"
-              className="btn-ghost"
+              className="btn border-ink/30 text-ink hover:border-ink hover:bg-ink hover:text-paper"
               title={hint}
               onClick={() =>
                 run(async () => {
@@ -82,7 +87,7 @@ export function ExportBar({ jobId }: { jobId: number }) {
       </div>
       <p
         role="status"
-        className={`mt-3 min-h-5 text-sm ${status?.tone === 'error' ? 'text-bad' : 'text-ok'}`}
+        className={`mt-4 min-h-5 font-mono text-xs tracking-wide ${status?.tone === 'error' ? 'text-[#b3261e]' : 'text-ink/70'}`}
       >
         {status?.text}
       </p>

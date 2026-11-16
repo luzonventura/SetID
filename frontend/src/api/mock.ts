@@ -198,6 +198,26 @@ function withTimestamps(job: Job, community: Community): Community {
   }
 }
 
+/** Carátula inventada (SVG en data:) para ver la interfaz sin conexión. */
+function mockCover(artist: string, title: string): string | null {
+  let h = 0
+  for (const ch of artist + title) h = (h * 33 + ch.charCodeAt(0)) >>> 0
+  if (h % 5 === 0) return null // alguna se queda sin carátula, como en la realidad
+  const a = h % 360
+  const b = (a + 40 + (h % 90)) % 360
+  const shape =
+    h % 3 === 0
+      ? `<circle cx="150" cy="150" r="${60 + (h % 50)}" fill="hsl(${b} 80% 60%)" opacity=".85"/>`
+      : h % 3 === 1
+        ? `<rect x="60" y="60" width="180" height="180" transform="rotate(${h % 45} 150 150)" fill="none" stroke="hsl(${b} 85% 65%)" stroke-width="14"/>`
+        : `<path d="M0 ${200 + (h % 60)} Q150 ${60 + (h % 80)} 300 ${180 + (h % 70)} V300 H0Z" fill="hsl(${b} 75% 55%)"/>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="hsl(${a} 65% 30%)"/><stop offset="1" stop-color="hsl(${(a + 200) % 360} 60% 8%)"/></linearGradient></defs><rect width="300" height="300" fill="url(#g)"/>${shape}<text x="20" y="280" font-family="sans-serif" font-size="18" font-weight="700" fill="white" opacity=".8">${artist
+    .split(' ')[0]
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')}</text></svg>`
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
+}
+
 function decorate(job: Job, rows: typeof SAMPLE, community: Community): Entry[] {
   // Como en Python: no se sugiere un track que la huella ya ha identificado en el set.
   const known = new Set(
@@ -208,6 +228,7 @@ function decorate(job: Job, rows: typeof SAMPLE, community: Community): Entry[] 
   )
   return rows.map((row, i) => ({
     ...row,
+    cover_url: row.source === 'unknown' ? null : mockCover(row.artist, row.title),
     position: i + 1,
     timestamp_url:
       job.source_type === 'youtube' ? `${job.source}&t=${Math.floor(row.start_s)}s` : null,
@@ -256,6 +277,7 @@ export function createMockApi(options: MockOptions = {}): RawApi {
       mark_unknown_edges: false,
       community_enabled: true,
       community_max_comments: 300,
+      artwork_lookup: true,
       acrcloud_host: 'identify-eu-west-1.acrcloud.com',
       audd_confidence: 0.45,
       shazam_confidence: 0.45,

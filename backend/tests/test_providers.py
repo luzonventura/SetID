@@ -11,6 +11,7 @@ import httpx
 import pytest
 import respx
 
+from setid.artwork import LOOKUP_INTERVAL_S, ArtworkFinder, pick_itunes_result, safe_artwork_url
 from setid.audio.demo import DEMO_CATALOG
 from setid.providers import acrcloud, audd, shazam
 from setid.providers.acrcloud import ACRCloudProvider
@@ -288,3 +289,125 @@ def test_shazam_parse_success() -> None:
 
 def test_shazam_no_match() -> None:
     assert shazam.parse_response({"matches": [], "retryms": 1000}, confidence=0.8) is None
+
+
+# --- Carátulas ----------------------------------------------------------------------------
+
+
+def test_shazam_parse_cover_prefers_hq() -> None:
+    payload = {
+        "matches": [{"id": "1"}],
+        "track": {
+            "title": "T",
+            "subtitle": "A",
+            "images": {
+                "coverart": "https://is1-ssl.mzstatic.com/image/thumb/a/400x400cc.jpg",
+                "coverarthq": "https://is2-ssl.mzstatic.com/image/thumb/a/400x400cc.jpg",
+            },
+        },
+    }
+    match = shazam.parse_response(payload, confidence=0.8)
+    assert match is not None
+    assert match.cover_url == "https://is2-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg"
+
+
+def test_audd_parse_cover_from_apple_music_template() -> None:
+    payload = {
+        "status": "success",
+        "result": {
+            "artist": "A",
+            "title": "T",
+            "apple_music": {
+                "artwork": {"url": "https://is3-ssl.mzstatic.com/image/thumb/b/{w}x{h}bb.jpg"}
+            },
+        },
+    }
+    match = audd.parse_response(payload, confidence=0.8)
+    assert match is not None
+    assert match.cover_url == "https://is3-ssl.mzstatic.com/image/thumb/b/600x600bb.jpg"
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        None,
+        42,
+        "http://is1-ssl.mzstatic.com/a/100x100bb.jpg",  # sin TLS
+        "https://evil.example.com/a.jpg",
+        "https://mzstatic.com.evil.example/a.jpg",
+        "https://user@is1-ssl.mzstatic.com/a.jpg",
+        "https://is1-ssl.mzstatic.com:8443/a.jpg",
+        "javascript:alert(1)",
+        "https://is1-ssl.mzstatic.com/" + "a" * 1000,
+    ],
+)
+def test_safe_artwork_url_rejects_untrusted(url: object) -> None:
+    assert safe_artwork_url(url) is None
+
+
+def test_safe_artwork_url_drops_query_and_resizes() -> None:
+    url = "https://IS1-ssl.mzstatic.com/image/thumb/x/100x100bb.jpg?track=1#frag"
+    assert safe_artwork_url(url) == "https://is1-ssl.mzstatic.com/image/thumb/x/600x600bb.jpg"
+
+
+def test_pick_itunes_result_needs_same_title_and_shared_artist() -> None:
+    cover = "https://is1-ssl.mzstatic.com/image/thumb/c/100x100bb.jpg"
+    payload = {
+        "results": [
+            {"artistName": "Someone Else", "trackName": "Vibes", "artworkUrl100": "x"},
+            {"artistName": "Ilario Alicante", "trackName": "Vibes (Remix)", "artworkUrl100": "x"},
+            {
+                "artistName": "Ilario Alicante & Friend",
+                "trackName": "Vibes (Original Mix)",
+                "artworkUrl100": cover,
+            },
+        ]
+    }
+    assert pick_itunes_result("Ilario Alicante", "Vibes", payload) == cover.replace(
+        "100x100", "600x600"
+    )
+    assert pick_itunes_result("Nobody", "Vibes", payload) is None
+    assert pick_itunes_result("A", "T", "no es un dict") is None
+
+
+class _MemoryCache:
+    def __init__(self) -> None:
+        self.data: dict[str, str | None] = {}
+
+    def get(self, key: str) -> tuple[bool, str | None]:
+        return (key in self.data, self.data.get(key))
+
+    def put(self, key: str, url: str | None) -> None:
+        self.data[key] = url
+
+
+async def test_artwork_finder_caches_hits_and_misses_but_not_rate_limits() -> None:
+    calls: list[str] = []
+    status = {"code": 200}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.params["term"])
+        assert request.url.host == "itunes.apple.com"
+        return httpx.Response(status["code"], json={"results": []})
+
+    slept: list[float] = []
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    cache = _MemoryCache()
+    finder = ArtworkFinder(
+        cache,
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        sleep=fake_sleep,
+        clock=lambda: 0.0,
+    )
+    status["code"] = 429
+    assert await finder.find("A", "T") is None
+    assert cache.data == {}  # el límite de iTunes no se guarda como «sin carátula»
+    status["code"] = 200
+    assert await finder.find("A", "T") is None
+    assert await finder.find("A", "T") is None  # segunda vez: desde la caché
+    assert len(calls) == 2
+    assert slept == [LOOKUP_INTERVAL_S]  # respeta el intervalo entre peticiones
+    await finder.aclose()

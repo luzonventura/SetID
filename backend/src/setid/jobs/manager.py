@@ -24,12 +24,13 @@ from typing import Any
 from sqlalchemy import Engine
 
 from setid import proc
+from setid.artwork import ArtworkCache, ArtworkFinder
 from setid.audio.ffmpeg import InvalidAudioError
 from setid.community import Hint, parse_community
 from setid.config import Settings
 from setid.db.budget import DailyBudget
 from setid.db.tables import Job, JobStatus, utcnow
-from setid.jobs.repository import JobRepository
+from setid.jobs.repository import ArtworkStore, JobRepository
 from setid.jobs.views import JobDetail, JobView, community_view, tracklist_views
 from setid.models import SourceType, TracklistEntry
 from setid.pipeline import (
@@ -53,6 +54,7 @@ log = logging.getLogger(__name__)
 
 Listener = Callable[[dict[str, Any]], None]
 ProviderFactory = Callable[[Settings], RecognitionProvider]
+ArtworkFactory = Callable[[ArtworkCache], ArtworkFinder]
 
 MAX_QUEUED = 20
 _PROGRESS_EVERY_S = 0.5
@@ -96,6 +98,7 @@ class JobManager:
         *,
         provider_factory: ProviderFactory = build_provider,
         resolver: RedirectResolver | None = None,
+        artwork_factory: ArtworkFactory = ArtworkFinder,
     ) -> None:
         self.repo = JobRepository(engine)
         self._engine = engine
@@ -112,6 +115,12 @@ class JobManager:
         self._stopping = False
         self._running: _Running | None = None
         self._live: dict[int, list[TracklistEntry]] = {}
+        # Carátulas: una cola aparte para no retrasar el siguiente trabajo.
+        self._artwork_factory = artwork_factory
+        self._artwork_queue: asyncio.Queue[int] | None = None
+        self._artwork_seen: set[int] = set()
+        self.artwork_idle = threading.Event()
+        self.artwork_idle.set()
 
     # --- Ciclo de vida -------------------------------------------------------------------
 
@@ -147,7 +156,18 @@ class JobManager:
         self._loop = asyncio.get_running_loop()
         self._queue = asyncio.Queue()
         self._settings_changed = asyncio.Event()
+        self._artwork_queue = asyncio.Queue()
+        artwork = asyncio.create_task(self._artwork_worker())
         self._ready.set()
+        try:
+            await self._job_loop()
+        finally:
+            artwork.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await artwork
+
+    async def _job_loop(self) -> None:
+        assert self._queue is not None  # noqa: S101
         while True:
             job_id = await self._queue.get()
             if job_id is None or self._stopping:
@@ -272,6 +292,8 @@ class JobManager:
         live = job_id in self._live
         entries = self._live[job_id] if live else self.repo.entries(job_id)
         hints = self.repo.hints(job_id)
+        if job.status is JobStatus.DONE and not live and _missing_covers(entries):
+            self._schedule_artwork(job_id)
         return JobDetail(
             **view.model_dump(),
             tracklist=tracklist_views(view, entries, hints),
@@ -386,6 +408,9 @@ class JobManager:
                 self.repo.replace_hints(job_id, await community)
             self.repo.replace_entries(job_id, result.tracklist)
             self._live.pop(job_id, None)
+            # Antes de «done» para que quien espere el final vea ya la búsqueda pendiente;
+            # no empieza hasta que esta corrutina ceda el control.
+            self._schedule_artwork(job_id)
             self._finish(
                 job_id,
                 JobStatus.DONE,
@@ -423,6 +448,7 @@ class JobManager:
         entries = self.repo.entries(cached.id)
         self.repo.replace_entries(job_id, entries)
         self.repo.replace_hints(job_id, self.repo.hints(cached.id))
+        self._schedule_artwork(job_id)
         self._finish(
             job_id,
             JobStatus.DONE,
@@ -512,3 +538,52 @@ class JobManager:
                     self._emit_tracklist(job_id, progress.tracklist, live=True)
 
         return handle
+
+    # --- Carátulas (hilo del worker, tarea aparte) -------------------------------------------
+
+    def _schedule_artwork(self, job_id: int) -> None:
+        """Busca las carátulas que faltan, una vez por trabajo y sesión. Cualquier hilo."""
+        if self._loop is None or job_id in self._artwork_seen:
+            return
+        self._artwork_seen.add(job_id)
+        self.artwork_idle.clear()
+        self._loop.call_soon_threadsafe(self._put_artwork, job_id)
+
+    def _put_artwork(self, job_id: int) -> None:
+        assert self._artwork_queue is not None  # noqa: S101
+        self._artwork_queue.put_nowait(job_id)
+
+    async def _artwork_worker(self) -> None:
+        assert self._artwork_queue is not None  # noqa: S101
+        finder: ArtworkFinder | None = None
+        try:
+            while True:
+                job_id = await self._artwork_queue.get()
+                try:
+                    if self._store.load().artwork_lookup:
+                        finder = finder or self._artwork_factory(ArtworkStore(self._engine))
+                        await self._enrich_artwork(job_id, finder)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    log.exception("error buscando carátulas", extra={"job_id": job_id})
+                finally:
+                    if self._artwork_queue.empty():
+                        self.artwork_idle.set()
+        finally:
+            if finder is not None:
+                with contextlib.suppress(Exception):
+                    await finder.aclose()
+
+    async def _enrich_artwork(self, job_id: int, finder: ArtworkFinder) -> None:
+        for entry in _missing_covers(self.repo.entries(job_id)):
+            url = await finder.find(entry.artist, entry.title)
+            if url is None or not self.repo.set_covers(job_id, {entry.position: url}):
+                continue
+            # Se avisa en cuanto aparece cada carátula; el trabajo puede haberse borrado.
+            if self.repo.get(job_id) is not None:
+                self._emit_tracklist(job_id, self.repo.entries(job_id), live=False)
+
+
+def _missing_covers(entries: list[TracklistEntry]) -> list[TracklistEntry]:
+    return [e for e in entries if not e.is_unknown and not e.cover_url]

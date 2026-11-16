@@ -10,7 +10,8 @@ const CSP = [
   "script-src 'self'",
   "style-src 'self'",
   "font-src 'self'",
-  "img-src 'self' data:",
+  // Carátulas: solo la CDN de Apple (Shazam, Apple Music e iTunes las sirven desde ahí).
+  "img-src 'self' data: https://*.mzstatic.com",
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",
@@ -38,6 +39,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    // El tocadiscos 3D (three + R3F) va en su propio chunk de ~1 MB, cargado bajo demanda y
+    // desde disco local: en una app de escritorio no penaliza.
+    chunkSizeWarningLimit: 1200,
   },
   test: {
     environment: 'jsdom',

@@ -38,6 +38,7 @@ EDITABLE_FIELDS = frozenset(
         "mark_unknown_edges",
         "community_enabled",
         "community_max_comments",
+        "artwork_lookup",
         "acrcloud_host",
         "audd_confidence",
         "shazam_confidence",

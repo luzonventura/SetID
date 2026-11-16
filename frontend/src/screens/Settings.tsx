@@ -4,7 +4,15 @@ import { api, BridgeError } from '../api/bridge'
 import type { ProviderName, SecretName, SettingsValues, SettingsView } from '../api/types'
 import { Notice, Spinner } from '../components/ui'
 
-const PROVIDERS: { id: ProviderName; name: string; cost: string; note: string }[] = [
+// Los proveedores de pago (ACRCloud, AudD) siguen soportados por el motor, pero no se ofrecen
+// en la interfaz: solo aparecen si ya estaban elegidos, para poder volver a Shazam.
+const PROVIDERS: {
+  id: ProviderName
+  name: string
+  cost: string
+  note: string
+  paid?: boolean
+}[] = [
   {
     id: 'shazam',
     name: 'Shazam',
@@ -14,14 +22,16 @@ const PROVIDERS: { id: ProviderName; name: string; cost: string; note: string }[
   {
     id: 'acrcloud',
     name: 'ACRCloud',
-    cost: 'Prueba gratuita',
+    cost: 'De pago',
     note: 'La mejor base de datos para electrónica. Devuelve puntuación de confianza real.',
+    paid: true,
   },
   {
     id: 'audd',
     name: 'AudD',
-    cost: 'Pocas consultas gratis',
+    cost: 'De pago',
     note: 'Sin puntuación de confianza: hace falta que dos segmentos coincidan.',
+    paid: true,
   },
   {
     id: 'fake',
@@ -41,10 +51,10 @@ const SECRETS: Record<'acrcloud' | 'audd', { name: SecretName; label: string }[]
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <section className="grid gap-6 border-t border-line pt-8 lg:grid-cols-[16rem_1fr]">
+    <section className="grid animate-rise gap-x-12 gap-y-6 border-t border-line py-9 lg:grid-cols-[20rem_1fr]">
       <div>
-        <h2 className="display text-xl">{title}</h2>
-        {hint && <p className="mt-2 text-sm leading-relaxed text-fog">{hint}</p>}
+        <h2 className="display text-4xl">{title}</h2>
+        {hint && <p className="mt-3 max-w-sm text-sm leading-relaxed text-fog">{hint}</p>}
       </div>
       <div className="space-y-5">{children}</div>
     </section>
@@ -202,10 +212,18 @@ export function Settings() {
     draft.provider === 'acrcloud' || draft.provider === 'audd' ? SECRETS[draft.provider] : []
 
   return (
-    <form onSubmit={submit} className="space-y-10 pb-24">
-      <header className="animate-rise">
-        <p className="label">Configuración</p>
-        <h1 className="display mt-3 text-[clamp(2.5rem,6vw,4.5rem)]">Ajustes</h1>
+    <form onSubmit={submit} className="pb-28">
+      <header className="pb-12">
+        <p className="label animate-rise">Configuración</p>
+        <h1 className="mt-5">
+          <span className="line-mask">
+            <span className="display text-[clamp(4rem,9vw,9rem)]">Ajustes</span>
+          </span>
+        </h1>
+        <p className="voice mt-3 max-w-2xl animate-rise text-2xl leading-snug text-fog [animation-delay:120ms]">
+          Cómo escucha SetID tus sets: quién identifica, cuántas consultas gasta y cómo agrupa lo
+          que encuentra.
+        </p>
       </header>
 
       <Section
@@ -215,15 +233,15 @@ export function Settings() {
         <fieldset>
           <legend className="sr-only">Proveedor de reconocimiento</legend>
           <div className="grid gap-3 sm:grid-cols-2">
-            {PROVIDERS.map((p) => {
+            {PROVIDERS.filter((p) => !p.paid || p.id === view.values.provider).map((p) => {
               const selected = draft.provider === p.id
               return (
                 <label
                   key={p.id}
-                  className={`relative cursor-pointer border p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-signal ${
+                  className={`relative cursor-pointer border p-5 transition-colors duration-300 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-signal ${
                     selected
-                      ? 'border-signal bg-signal-soft'
-                      : 'border-line-strong hover:border-chalk'
+                      ? 'border-signal bg-booth'
+                      : 'border-line hover:border-line-strong hover:bg-booth'
                   }`}
                 >
                   <input
@@ -235,7 +253,18 @@ export function Settings() {
                     className="sr-only"
                   />
                   <span className="flex items-baseline justify-between gap-3">
-                    <span className="text-lg font-semibold [font-stretch:115%]">{p.name}</span>
+                    <span className="display flex items-center gap-3 text-3xl">
+                      {/* Piloto: encendido en el proveedor elegido. */}
+                      <span
+                        aria-hidden
+                        className={`size-2 rounded-full transition-all duration-300 ${
+                          selected
+                            ? 'bg-signal shadow-[0_0_10px_2px_rgb(125_211_252/0.7)]'
+                            : 'bg-line-strong'
+                        }`}
+                      />
+                      {p.name}
+                    </span>
                     <span className={`label ${selected ? 'text-signal' : ''}`}>{p.cost}</span>
                   </span>
                   <span className="mt-1.5 block text-sm leading-relaxed text-fog">{p.note}</span>
@@ -245,7 +274,7 @@ export function Settings() {
           </div>
         </fieldset>
         {providerSecrets.length > 0 && (
-          <div className="space-y-4 border-l-2 border-line-strong pl-5">
+          <div className="space-y-4 border border-line bg-booth p-5">
             <p className="text-sm text-fog">
               Se guardan en el Administrador de credenciales de Windows, nunca en un archivo.
             </p>
@@ -371,8 +400,23 @@ export function Settings() {
         />
       </Section>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-ink/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-8">
+      <Section
+        title="Carátulas"
+        hint="Shazam y AudD ya traen la carátula de cada track. Para las que falten se busca artista y título en el catálogo público de iTunes (sin clave ni cuenta) y se guardan en caché."
+      >
+        <label className="flex cursor-pointer items-center gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={draft.artwork_lookup}
+            onChange={(e) => set('artwork_lookup', e.target.checked)}
+            className="size-4 accent-[var(--color-signal)]"
+          />
+          Buscar en iTunes las carátulas que falten
+        </label>
+      </Section>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line-strong bg-ink">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-10">
           <p
             role="status"
             className={`text-sm ${status?.tone === 'error' ? 'text-bad' : 'text-ok'}`}

@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { DropOverlay } from './components/DropOverlay'
 import { Shell } from './components/Shell'
 import { Notice } from './components/ui'
-import { useRoute } from './lib/router'
+import { interceptLinks, useRoute } from './lib/router'
 import { Home } from './screens/Home'
 import { JobScreen } from './screens/JobScreen'
 import { Settings } from './screens/Settings'
@@ -26,6 +26,7 @@ export default function App() {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [routeKey])
+  useEffect(() => interceptLinks(), [])
   return (
     <JobsProvider>
       <Shell route={route}>

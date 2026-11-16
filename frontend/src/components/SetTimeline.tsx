@@ -4,11 +4,7 @@
 import type { Entry } from '../api/types'
 import { confidenceLevel, formatTime } from '../lib/format'
 
-const FILL = {
-  high: 'bg-signal',
-  medium: 'bg-signal/60',
-  low: 'bg-signal/30',
-}
+const FILL = { high: 'bg-signal', medium: 'bg-signal/65', low: 'bg-signal/35' }
 
 function ticks(duration: number): number[] {
   const step = duration > 2 * 3600 ? 1800 : duration > 3600 ? 900 : duration > 1200 ? 600 : 300
@@ -34,11 +30,15 @@ export function SetTimeline({
 
   return (
     <div className="select-none">
-      <div className="relative h-16 overflow-hidden border border-line bg-booth">
+      <div className="mb-3 flex items-baseline justify-between">
+        <p className="label">Vista general</p>
+        <p className="label">Pulsa un bloque para ir a su track</p>
+      </div>
+      <div className="relative h-16 overflow-hidden border-y border-line-strong">
         {/* Zona aún sin analizar */}
         {scannedS !== null && (
           <div
-            className="absolute inset-y-0 right-0 bg-ink/70"
+            className="hatch absolute inset-y-0 right-0 bg-ink/70"
             style={{ left: pct(scannedS) }}
             aria-hidden
           />
@@ -53,12 +53,12 @@ export function SetTimeline({
               onClick={() => onSelect(e.position)}
               title={`${formatTime(e.start_s)}  ${name}`}
               aria-label={`Ir al ${e.position}: ${name}, ${formatTime(e.start_s)}`}
-              className={`absolute inset-y-2 border-l border-ink transition-[filter,transform] hover:brightness-125 focus-visible:z-10 ${
-                unknown ? 'hatch bg-line' : FILL[confidenceLevel(e.confidence)]
+              className={`absolute inset-y-2.5 origin-bottom transition-[transform,background-color] duration-300 ease-[var(--ease-out-expo)] hover:scale-y-[1.3] hover:!bg-paper focus-visible:z-10 ${
+                unknown ? 'hatch bg-deck' : FILL[confidenceLevel(e.confidence)]
               }`}
               style={{
-                left: pct(e.start_s),
-                width: `max(3px, calc(${pct(e.end_s - e.start_s)} - 1px))`,
+                left: `calc(${pct(e.start_s)} + 1px)`,
+                width: `max(3px, calc(${pct(e.end_s - e.start_s)} - 3px))`,
               }}
             />
           )
@@ -66,11 +66,15 @@ export function SetTimeline({
         {scannedS !== null && (
           <div
             aria-hidden
-            className="absolute inset-y-0 w-px bg-chalk shadow-[0_0_12px_2px_rgba(255,90,31,0.7)]"
-            style={{ left: pct(scannedS) }}
-          />
+            className="pointer-events-none absolute inset-y-0 left-0 w-full transition-transform duration-700 ease-linear will-change-transform"
+            style={{ transform: `translateX(${pct(scannedS)})` }}
+          >
+            <span className="absolute inset-y-0 left-0 w-px bg-paper" />
+            <span className="absolute -left-[3px] top-0 size-[7px] bg-paper" />
+          </div>
         )}
       </div>
+      <div className="ruler h-1.5 opacity-60" aria-hidden />
       <div className="relative mt-1.5 h-4" aria-hidden>
         <span className="timecode absolute left-0 text-[10px] text-fog">0:00</span>
         {ticks(duration).map((t) => (

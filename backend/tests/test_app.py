@@ -9,11 +9,13 @@ from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
+import httpx
 import pytest
 from sqlmodel import Session
 
 from setid.app.bridge import Api
 from setid.app.context import AppContext, create_app
+from setid.artwork import ArtworkCache, ArtworkFinder
 from setid.audio.demo import DemoPart, generate_demo_set
 from setid.config import Settings
 from setid.db.tables import Job, JobStatus
@@ -87,6 +89,31 @@ class Events:
         ]
 
 
+COVER = "https://is1-ssl.mzstatic.com/image/thumb/Music/x/600x600bb.jpg"
+ARTWORK_REQUESTS: list[str] = []
+
+
+def _fake_itunes(request: httpx.Request) -> httpx.Response:
+    """Búsqueda de iTunes simulada: solo conoce «Night Shift»."""
+    term = request.url.params["term"]
+    ARTWORK_REQUESTS.append(term)
+    results = []
+    if "Night Shift" in term:
+        results.append(
+            {
+                "artistName": "Lumen Grid",
+                "trackName": "Night Shift",
+                "artworkUrl100": COVER.replace("600x600", "100x100"),
+            }
+        )
+    return httpx.Response(200, json={"results": results})
+
+
+def fake_artwork(cache: ArtworkCache) -> ArtworkFinder:
+    client = httpx.AsyncClient(transport=httpx.MockTransport(_fake_itunes))
+    return ArtworkFinder(cache, client=client, interval_s=0)
+
+
 def make_app(
     data_dir: Path, provider_factory: Callable[[Settings], RecognitionProvider] | None = None
 ) -> AppContext:
@@ -94,6 +121,7 @@ def make_app(
         data_dir,
         secrets=MemorySecrets(),
         provider_factory=provider_factory or (lambda _s: FakeProvider()),
+        artwork_factory=fake_artwork,
         log_to_file=False,
     )
     app.store.update({"provider": "fake"})
@@ -154,6 +182,48 @@ def test_file_job_end_to_end(app: AppContext, events: Events, demo_file: Path) -
     assert first["timestamp_url"] is None  # archivo local: no hay a dónde saltar
     assert temp_files(app) == []
     assert demo_file.exists()
+
+
+def test_missing_covers_are_found_and_cached(
+    app: AppContext, events: Events, demo_file: Path
+) -> None:
+    job = ok(app.api.create_job_from_file(str(demo_file)))
+    events.wait_status(job["id"], JobStatus.DONE)
+    assert app.manager.artwork_idle.wait(TIMEOUT)
+    # La primera carátula se notifica en cuanto aparece, sin esperar al resto.
+    events.wait(
+        lambda e: (
+            e["type"] == "tracklist"
+            and not e["live"]
+            and any(t["cover_url"] for t in e["tracklist"])
+        )
+    )
+    detail = ok(app.api.get_job(job["id"]))
+    covers = [(t["title"], t["cover_url"]) for t in detail["tracklist"]]
+    assert covers == [
+        ("Night Shift", COVER),  # «Night Shift» suena dos veces: una búsqueda, dos carátulas
+        ("ID", None),  # los ID – ID no se buscan
+        ("Groove Theory", None),  # iTunes no lo conoce
+        ("Night Shift", COVER),
+    ]
+
+    # Otro trabajo con los mismos tracks no vuelve a preguntar a iTunes.
+    before = len(ARTWORK_REQUESTS)
+    forced = ok(app.api.create_job_from_file(str(demo_file), True))
+    events.wait_status(forced["id"], JobStatus.DONE)
+    assert app.manager.artwork_idle.wait(TIMEOUT)
+    assert len(ARTWORK_REQUESTS) == before
+    assert COVER in [t["cover_url"] for t in ok(app.api.get_job(forced["id"]))["tracklist"]]
+
+
+def test_artwork_lookup_can_be_disabled(app: AppContext, events: Events, demo_file: Path) -> None:
+    app.store.update({"artwork_lookup": False})
+    before = len(ARTWORK_REQUESTS)
+    job = ok(app.api.create_job_from_file(str(demo_file)))
+    events.wait_status(job["id"], JobStatus.DONE)
+    assert app.manager.artwork_idle.wait(TIMEOUT)
+    assert len(ARTWORK_REQUESTS) == before
+    assert all(t["cover_url"] is None for t in ok(app.api.get_job(job["id"]))["tracklist"])
 
 
 def test_history_lists_newest_first(app: AppContext, events: Events, demo_file: Path) -> None:

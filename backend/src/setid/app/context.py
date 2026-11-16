@@ -9,8 +9,9 @@ from pathlib import Path
 from sqlalchemy import Engine
 
 from setid.app.bridge import Api
+from setid.artwork import ArtworkFinder
 from setid.db.engine import open_database
-from setid.jobs.manager import JobManager, ProviderFactory
+from setid.jobs.manager import ArtworkFactory, JobManager, ProviderFactory
 from setid.logging_setup import setup_logging
 from setid.providers.registry import build_provider
 from setid.settings_store import SecretBackend, SettingsStore
@@ -38,12 +39,19 @@ def create_app(
     secrets: SecretBackend | None = None,
     provider_factory: ProviderFactory = build_provider,
     resolver: RedirectResolver | None = None,
+    artwork_factory: ArtworkFactory = ArtworkFinder,
     log_to_file: bool = True,
 ) -> AppContext:
     store = SettingsStore(data_dir, secrets)
     log_path = setup_logging(store.data_dir / "logs") if log_to_file else None
     engine = open_database(store.data_dir / "setid.db")
-    manager = JobManager(engine, store, provider_factory=provider_factory, resolver=resolver)
+    manager = JobManager(
+        engine,
+        store,
+        provider_factory=provider_factory,
+        resolver=resolver,
+        artwork_factory=artwork_factory,
+    )
     manager.start()
     log.info("app iniciada")
     return AppContext(store, engine, manager, Api(manager, store), log_path)

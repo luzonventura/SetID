@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+from setid.artwork import safe_artwork_url
 from setid.models import Match
 from setid.providers.base import (
     PermanentProviderError,
@@ -48,6 +49,10 @@ def parse_response(payload: Any, confidence: float, provider: str = "audd") -> M
         album=result.get("album") or None,
         confidence=confidence,
         provider=provider,
+        # Apple Music da la carátula como plantilla «…/{w}x{h}bb.jpg».
+        cover_url=safe_artwork_url(
+            ((result.get("apple_music") or {}).get("artwork") or {}).get("url")
+        ),
     )
 
 

@@ -47,6 +47,8 @@ export interface Entry {
   confidence: number | null
   detections: number
   source: EntrySource
+  /** Carátula (CDN de Apple, ya validada en Python). */
+  cover_url?: string | null
   timestamp_url: string | null
   search: SearchLinks | null
   /** Solo en los ID – ID: lo que dice la comunidad sobre ese tramo (sin verificar). */
@@ -100,6 +102,7 @@ export interface SettingsValues {
   mark_unknown_edges: boolean
   community_enabled: boolean
   community_max_comments: number
+  artwork_lookup: boolean
   acrcloud_host: string
   audd_confidence: number
   shazam_confidence: number

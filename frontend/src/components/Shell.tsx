@@ -5,7 +5,7 @@ import type { AppInfo, Budget } from '../api/types'
 import { href, type Route } from '../lib/router'
 
 /** El mismo trazo que el icono de la app (backend/scripts/make_icon.py), sin el fondo. */
-function Logo({ className = '' }: { className?: string }) {
+export function Logo({ className = '' }: { className?: string }) {
   return (
     <svg viewBox="40 40 176 176" aria-hidden className={className}>
       <path
@@ -45,8 +45,14 @@ function BudgetChip() {
       ? `${budget.used_today} consultas hoy`
       : `${budget.remaining} / ${budget.limit} consultas`
   return (
-    <span className="label hidden sm:inline" title={`Proveedor: ${budget.provider}`}>
-      <span className="text-chalk">{budget.provider}</span> · {text}
+    <span
+      className="label hidden items-center gap-2.5 md:inline-flex"
+      title={`Proveedor: ${budget.provider}`}
+    >
+      <span className="size-1.5 rounded-full bg-signal shadow-[0_0_8px_1px_rgb(125_211_252/0.7)]" />
+      <span className="text-chalk">{budget.provider}</span>
+      <span aria-hidden className="h-3 w-px bg-line-strong" />
+      <span className="timecode">{text}</span>
     </span>
   )
 }
@@ -63,11 +69,17 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
       <a
         href={href(target)}
         aria-current={current ? 'page' : undefined}
-        className={`label px-1 py-1 transition-colors hover:text-chalk ${
-          current ? 'text-chalk underline decoration-signal decoration-2 underline-offset-8' : ''
+        className={`group relative flex h-full items-center px-4 font-mono text-[0.7rem] tracking-[0.14em] uppercase transition-colors ${
+          current ? 'text-chalk' : 'text-fog hover:text-chalk'
         }`}
       >
         {text}
+        <span
+          aria-hidden
+          className={`absolute inset-x-4 -bottom-px h-px origin-left bg-signal transition-transform duration-500 ease-[var(--ease-out-expo)] ${
+            current ? 'scale-x-100' : 'scale-x-0 group-hover:scale-x-100'
+          }`}
+        />
       </a>
     )
   }
@@ -76,37 +88,40 @@ export function Shell({ route, children }: { route: Route; children: ReactNode }
     <div className="flex min-h-screen flex-col">
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-signal focus:px-3 focus:py-2 focus:text-ink"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-signal focus:px-4 focus:py-2 focus:text-ink"
       >
         Saltar al contenido
       </a>
-      <header className="sticky top-0 z-40 border-b border-line bg-ink/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
-          <a href="#/" className="group flex items-center gap-3" aria-label="SetID, inicio">
-            <Logo className="size-7 transition-transform duration-500 group-hover:rotate-[120deg]" />
-            <span className="display text-xl tracking-tight">
+      {/* Tira de estado, como el rótulo superior de un equipo: opaca y a todo el ancho. */}
+      <header className="sticky top-0 z-40 border-b border-line bg-ink [view-transition-name:site-header]">
+        <div className="mx-auto flex h-12 max-w-[1400px] items-stretch justify-between gap-6 px-5 sm:px-10">
+          <a href="#/" className="group flex items-center gap-2.5" aria-label="SetID, inicio">
+            <Logo className="size-5 transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:rotate-[240deg]" />
+            <span className="display text-[1.35rem] leading-none">
               Set<span className="text-signal">ID</span>
             </span>
           </a>
-          <nav aria-label="Principal" className="flex items-center gap-5">
+          <div className="flex items-center gap-6">
             <BudgetChip />
-            {navItem({ name: 'home' }, 'Nuevo')}
-            {navItem({ name: 'settings' }, 'Ajustes')}
-          </nav>
+            <nav aria-label="Principal" className="flex h-full items-stretch">
+              {navItem({ name: 'home' }, 'Nuevo')}
+              {navItem({ name: 'settings' }, 'Ajustes')}
+            </nav>
+          </div>
         </div>
       </header>
 
-      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-5 py-8 sm:px-8 sm:py-12">
+      <main id="main" className="mx-auto w-full max-w-[1400px] flex-1 px-5 py-10 sm:px-10 sm:py-12">
         {children}
       </main>
 
-      <footer className="border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-5 text-xs text-fog sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <footer className="mx-auto w-full max-w-[1400px] px-5 pb-7 sm:px-10">
+        <div className="flex flex-col gap-3 border-t border-line pt-5 text-xs text-fog/80 sm:flex-row sm:items-start sm:justify-between">
           <p className="max-w-3xl leading-relaxed">
             {info?.legal_notice ??
               'Herramienta de uso personal. El audio nunca se almacena ni se redistribuye.'}
           </p>
-          {info && <p className="label shrink-0">v{info.version}</p>}
+          {info && <p className="label shrink-0">SetID · v{info.version}</p>}
         </div>
       </footer>
     </div>
