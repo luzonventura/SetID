@@ -29,7 +29,7 @@ concurrency:
 jobs:
   dmg:
     name: SetID.app y .dmg
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 40
     # Escritura solo para adjuntar el .dmg a la release cuando se sube una etiqueta.
     permissions:
