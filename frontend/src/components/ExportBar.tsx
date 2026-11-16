@@ -47,7 +47,7 @@ export function ExportBar({ jobId }: { jobId: number }) {
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
           <h2 id="export" className="display text-[clamp(2.6rem,5vw,4.6rem)]">
-            Llévatelo
+            Expórtalo
           </h2>
           <p className="voice mt-1 text-2xl text-ink/60">
             cópialo para un comentario o guárdalo como archivo.
