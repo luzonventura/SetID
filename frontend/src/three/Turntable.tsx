@@ -48,8 +48,10 @@ import {
 import { grooveRoughnessTexture, labelTexture } from './textures'
 
 const SIGNAL = new THREE.Color('#7dd3fc')
-// Edición SetID: pilotos y luz estroboscópica en azul hielo, a juego con la interfaz.
+// Edición SetID: pilotos en azul hielo, a juego con la interfaz.
 const LED = new THREE.Color('#38bdf8')
+// La luz estroboscópica del plato, roja como en el original.
+const STROBE = new THREE.Color('#ff2a1a')
 
 // Chasis y posiciones medidas sobre la vista cenital del original.
 const DECK_W = 4.53
@@ -433,11 +435,11 @@ function Platter({
       <group position={[-1.3, 0, 0.98]}>
         <mesh position={[0, 0.004, 0]} rotation-x={-Math.PI / 2} rotation-z={0.65}>
           <planeGeometry args={[0.14, 0.05]} />
-          <meshBasicMaterial color={LED.clone().multiplyScalar(3)} toneMapped={false} />
+          <meshBasicMaterial color={STROBE.clone().multiplyScalar(3)} toneMapped={false} />
         </mesh>
         <pointLight
           position={[0, 0.06, 0]}
-          color="#38bdf8"
+          color={STROBE}
           intensity={2.2}
           distance={0.85}
           decay={2}
