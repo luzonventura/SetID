@@ -1,4 +1,4 @@
-"""Ventana de escritorio (pywebview + WebView2) que sirve la interfaz compilada.
+"""Ventana de escritorio (pywebview: WebView2 en Windows, WKWebView en el Mac).
 
 Uso::
 
@@ -52,10 +52,15 @@ APP_USER_MODEL_ID = "SetID.Desktop"
 
 
 def icon_path() -> Path | None:
-    """Icono de la ventana (setid.ico), tanto en desarrollo como en el ejecutable."""
-    candidates = [Path(__file__).with_name("assets") / "setid.ico"]
+    """Icono de la app, tanto en desarrollo como en el ejecutable.
+
+    ``setid.ico`` en Windows y ``setid.icns`` en el Mac (en el ``.app`` el Dock usa el del
+    bundle; este sirve al lanzar con ``uv run setid-app``).
+    """
+    name = "setid.icns" if sys.platform == "darwin" else "setid.ico"
+    candidates = [Path(__file__).with_name("assets") / name]
     if bundle := getattr(sys, "_MEIPASS", None):
-        candidates.insert(0, Path(bundle) / "setid" / "app" / "assets" / "setid.ico")
+        candidates.insert(0, Path(bundle) / "setid" / "app" / "assets" / name)
     return next((p for p in candidates if p.is_file()), None)
 
 

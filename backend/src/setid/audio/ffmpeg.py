@@ -57,7 +57,7 @@ def parse_probe(raw_json: str) -> AudioInfo:
 
 def probe(path: Path, *, timeout: float = 60.0) -> AudioInfo:
     args = [
-        "ffprobe",
+        proc.bundled_program("ffprobe"),
         "-v", "error",
         "-print_format", "json",
         "-show_format",
@@ -88,7 +88,7 @@ def validate_local_file(path: Path, *, max_bytes: int, max_duration_s: float) ->
 def normalize(src: Path, dst: Path, *, timeout: float) -> Path:
     """Convierte a WAV PCM mono, 44,1 kHz y 16 bits."""
     args = [
-        "ffmpeg",
+        proc.bundled_program("ffmpeg"),
         "-nostdin",
         "-hide_banner",
         "-loglevel", "error",

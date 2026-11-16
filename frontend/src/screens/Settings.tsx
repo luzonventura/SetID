@@ -276,7 +276,8 @@ export function Settings() {
         {providerSecrets.length > 0 && (
           <div className="space-y-4 border border-line bg-booth p-5">
             <p className="text-sm text-fog">
-              Se guardan en el Administrador de credenciales de Windows, nunca en un archivo.
+              Se guardan en el almacén de credenciales del sistema (el Administrador de credenciales
+              en Windows, el Llavero en el Mac), nunca en un archivo.
             </p>
             {providerSecrets.map((s) => (
               <SecretField
