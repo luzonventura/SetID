@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import struct
 import sys
 from pathlib import Path
@@ -165,6 +166,55 @@ def test_yt_dlp_runs_from_the_cli_exe_when_frozen(monkeypatch: pytest.MonkeyPatc
     command = proc.yt_dlp_command()
     assert Path(command[0]) == Path(r"C:\Apps\SetID\setid-cli.exe")
     assert command[1:] == ["--yt-dlp"]
+
+
+def test_yt_dlp_runs_from_the_cli_inside_the_mac_app(monkeypatch: pytest.MonkeyPatch) -> None:
+    from setid import proc
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(sys, "executable", "/Applications/SetID.app/Contents/MacOS/SetID")
+    command = proc.yt_dlp_command()
+    assert Path(command[0]) == Path("/Applications/SetID.app/Contents/MacOS/setid-cli")
+
+
+def test_mac_icon_is_a_valid_icns() -> None:
+    path = Path(desktop.__file__).with_name("assets") / "setid.icns"
+    data = path.read_bytes()
+    assert data[:4] == b"icns"
+    assert struct.unpack(">I", data[4:8])[0] == len(data)
+    kinds = set()
+    offset = 8
+    while offset < len(data):
+        kind, length = (
+            data[offset : offset + 4],
+            struct.unpack(">I", data[offset + 4 : offset + 8])[0],
+        )
+        assert data[offset + 8 : offset + 16] == b"\x89PNG\r\n\x1a\n"
+        kinds.add(kind)
+        offset += length
+    assert {b"ic07", b"ic08", b"ic09", b"ic10"} <= kinds
+
+
+def test_mac_data_dir_is_application_support(monkeypatch: pytest.MonkeyPatch) -> None:
+    from setid import config
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    expected = Path.home() / "Library" / "Application Support" / "SetID"
+    assert config._default_data_dir() == expected
+
+
+def test_bundled_ffmpeg_wins_over_path(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from setid import proc
+
+    assert proc.bundled_program("ffmpeg") in {"ffmpeg", shutil.which("ffmpeg")}
+    name = "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / name).write_bytes(b"")
+    monkeypatch.setattr(sys, "_MEIPASS", str(tmp_path), raising=False)
+    assert proc.bundled_program("ffmpeg") == str(tmp_path / "bin" / name)
+    # Lo que no va empaquetado sigue buscándose en el PATH.
+    assert Path(proc.bundled_program("ffprobe")).stem == "ffprobe"
 
 
 def test_cli_passes_yt_dlp_flag_through(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -77,7 +77,7 @@ def build_filtergraph(parts: tuple[DemoPart, ...]) -> str:
 
 def generate_demo_set(dst: Path, parts: tuple[DemoPart, ...] = DEMO_SET) -> Path:
     args = [
-        "ffmpeg",
+        proc.bundled_program("ffmpeg"),
         "-nostdin",
         "-hide_banner",
         "-loglevel", "error",

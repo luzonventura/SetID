@@ -3,9 +3,9 @@
 [![CI](https://github.com/luzonventura/SetID/actions/workflows/ci.yml/badge.svg)](https://github.com/luzonventura/SetID/actions/workflows/ci.yml)
 [![Licencia: MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)
-![Windows](https://img.shields.io/badge/plataforma-Windows-0078D6.svg)
+![Windows y macOS](https://img.shields.io/badge/plataforma-Windows%20%7C%20macOS-0078D6.svg)
 
-Extractor de tracklists de sets de DJ para Windows. Pegas un enlace de YouTube o SoundCloud, o
+Extractor de tracklists de sets de DJ para Windows y Mac. Pegas un enlace de YouTube o SoundCloud, o
 eliges un archivo de audio, y SetID devuelve el tracklist con marcas de tiempo.
 
 - **App de escritorio** (React en WebView2) y **CLI**.
@@ -64,6 +64,35 @@ Genera `backend\dist\SetID\` con `SetID.exe` (la app) y `setid-cli.exe` (la CLI,
 también usa para ejecutar yt-dlp), y crea accesos directos en Inicio y en el Escritorio. Sin
 `--shortcuts` solo construye. La [CI](https://github.com/luzonventura/SetID/actions/workflows/ci.yml)
 publica este mismo ejecutable como artefacto (`SetID-windows`) en cada push.
+
+### Instalar en el Mac
+
+Para Macs con Apple Silicon (M1 o posterior) y macOS 12 o superior. No hace falta instalar nada
+más: ffmpeg va dentro de la app.
+
+1. Descarga `SetID-<versión>-mac-arm64.dmg` de la
+   [última release](https://github.com/luzonventura/SetID/releases/latest) (o del artefacto
+   `SetID-mac` del flujo [Mac](https://github.com/luzonventura/SetID/actions/workflows/mac.yml)).
+2. Ábrelo y arrastra **SetID** a la carpeta **Aplicaciones**.
+3. Abre SetID desde Aplicaciones. La primera vez macOS dirá que no puede comprobar el
+   desarrollador y no la abrirá: es normal, la app no está firmada con una cuenta de Apple (cuesta
+   99 $ al año).
+4. Ve a **Ajustes del Sistema → Privacidad y seguridad**, baja hasta el aviso sobre SetID y pulsa
+   **Abrir igualmente**. Confirma con tu contraseña. A partir de ahí se abre normal. (Desde macOS
+   15 Sequoia el truco de clic derecho → Abrir ya no basta.)
+
+Si prefieres la Terminal, esto quita el bloqueo de una vez:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/SetID.app
+```
+
+Las claves de API se guardan en el Llavero y los datos en `~/Library/Application Support/SetID/`.
+
+El `.dmg` lo genera el flujo [`mac.yml`](.github/workflows/mac.yml) en un Mac de GitHub, a mano o al
+subir una etiqueta `v*` (entonces se adjunta a la release). En un Mac propio:
+`SETID_FFMPEG_DIR=<carpeta con ffmpeg y ffprobe> uv run --with pillow python scripts/build_app.py --dmg`
+(necesita `brew install create-dmg`).
 
 ### CLI
 
@@ -126,7 +155,8 @@ flowchart LR
     API --> ST["settings.json +<br/>Administrador de credenciales"]
 ```
 
-Los datos de la app viven en `%LOCALAPPDATA%\SetID\`:
+Los datos de la app viven en `%LOCALAPPDATA%\SetID\` (en el Mac,
+`~/Library/Application Support/SetID/`):
 
 | Ruta             | Contenido                                                 |
 | ---------------- | --------------------------------------------------------- |
@@ -194,7 +224,8 @@ $env:SETID_DEV_URL = "http://localhost:5173"
 uv run setid-app
 ```
 
-El logo se regenera con `uv run python scripts/make_icon.py` (icono `.ico` y `favicon.svg`).
+El logo se regenera con `uv run python scripts/make_icon.py` (iconos `.ico` y `.icns` y
+`favicon.svg`).
 
 ## Seguridad
 

@@ -1,4 +1,5 @@
-"""Genera el logo de SetID: ``setid.ico`` (multi-tamaño), ``favicon.svg`` y un PNG grande.
+"""Genera el logo de SetID: ``setid.ico`` (Windows), ``setid.icns`` (Mac), ``favicon.svg`` y un
+PNG grande.
 
 Sin dependencias: rasteriza la geometría con supermuestreo y escribe PNG/ICO a mano, así
 el icono se puede regenerar en cualquier máquina.
@@ -18,10 +19,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ICO_PATH = ROOT / "backend" / "src" / "setid" / "app" / "assets" / "setid.ico"
+ICNS_PATH = ICO_PATH.with_suffix(".icns")
 SVG_PATH = ROOT / "frontend" / "public" / "favicon.svg"
 PNG_PATH = ROOT / "backend" / "src" / "setid" / "app" / "assets" / "setid-256.png"
 
 SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
+
+# Tipos de imagen PNG de un .icns y su tamaño en px (los @2x comparten tamaño con otros).
+ICNS_TYPES = (
+    (b"icp4", 16),
+    (b"icp5", 32),
+    (b"ic11", 32),  # 16@2x
+    (b"ic12", 64),  # 32@2x
+    (b"ic07", 128),
+    (b"ic13", 256),  # 128@2x
+    (b"ic08", 256),
+    (b"ic14", 512),  # 256@2x
+    (b"ic09", 512),
+    (b"ic10", 1024),  # 512@2x
+)
+# En el Mac el icono no ocupa todo el lienzo: la plantilla de Apple deja un margen de 100 px
+# en 1024 alrededor del cuadrado redondeado.
+MAC_INSET = 100 / 1024
 
 # Geometría en un lienzo de 256×256 (coordenadas con y hacia abajo).
 CANVAS = 256.0
@@ -72,11 +91,16 @@ def in_mark(x: float, y: float, stroke: float, gap: tuple[float, float]) -> bool
     return any(math.hypot(x - cx, y - cy) <= half for cx, cy in map(_cap, gap))
 
 
-def render(size: int, samples: int = 4) -> bytes:
-    """Devuelve las filas RGBA (sin filtro PNG) de un icono de ``size`` px."""
-    stroke = stroke_for(size)
-    gap = gap_for(size)
-    scale = CANVAS / size
+def render(size: int, samples: int = 4, inset: float = 0.0) -> bytes:
+    """Devuelve las filas RGBA (sin filtro PNG) de un icono de ``size`` px.
+
+    ``inset`` es el margen transparente alrededor del logo, en fracción del lado.
+    """
+    content = size * (1 - 2 * inset)
+    offset = size * inset
+    stroke = stroke_for(round(content))
+    gap = gap_for(round(content))
+    scale = CANVAS / content
     rows = bytearray()
     for py in range(size):
         rows.append(0)  # filtro PNG «None»
@@ -84,8 +108,8 @@ def render(size: int, samples: int = 4) -> bytes:
             bg = mark = 0
             for sy in range(samples):
                 for sx in range(samples):
-                    x = (px + (sx + 0.5) / samples) * scale
-                    y = (py + (sy + 0.5) / samples) * scale
+                    x = (px + (sx + 0.5) / samples - offset) * scale
+                    y = (py + (sy + 0.5) / samples - offset) * scale
                     if in_rounded_square(x, y):
                         bg += 1
                         if in_mark(x, y, stroke, gap):
@@ -100,7 +124,7 @@ def render(size: int, samples: int = 4) -> bytes:
     return bytes(rows)
 
 
-def png(size: int) -> bytes:
+def png(size: int, inset: float = 0.0) -> bytes:
     def chunk(kind: bytes, data: bytes) -> bytes:
         body = kind + data
         return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body))
@@ -109,7 +133,8 @@ def png(size: int) -> bytes:
     return (
         b"\x89PNG\r\n\x1a\n"
         + chunk(b"IHDR", header)
-        + chunk(b"IDAT", zlib.compress(render(size), 9))
+        # Los tamaños grandes con menos muestras: si no, generar 1024 px tarda minutos.
+        + chunk(b"IDAT", zlib.compress(render(size, 4 if size <= 256 else 2, inset), 9))
         + chunk(b"IEND", b"")
     )
 
@@ -126,6 +151,14 @@ def ico(images: dict[int, bytes]) -> bytes:
         offset += len(image)
         data += image
     return out + data
+
+
+def icns(images: dict[int, bytes]) -> bytes:
+    """ICNS con imágenes PNG embebidas (válido desde OS X 10.7)."""
+    body = b""
+    for kind, size in ICNS_TYPES:
+        body += kind + struct.pack(">I", 8 + len(images[size])) + images[size]
+    return b"icns" + struct.pack(">I", 8 + len(body)) + body
 
 
 def svg() -> str:
@@ -148,7 +181,9 @@ def main() -> None:
     ICO_PATH.write_bytes(ico(images))
     PNG_PATH.write_bytes(images[256])
     SVG_PATH.write_text(svg(), encoding="utf-8")
-    for path in (ICO_PATH, PNG_PATH, SVG_PATH):
+    mac = {size: png(size, MAC_INSET) for size in {size for _, size in ICNS_TYPES}}
+    ICNS_PATH.write_bytes(icns(mac))
+    for path in (ICO_PATH, ICNS_PATH, PNG_PATH, SVG_PATH):
         print(f"{path.relative_to(ROOT)}  ({path.stat().st_size:,} bytes)")
 
 

@@ -1,0 +1,120 @@
+# Instalador para Mac (Apple Silicon): SetID.app dentro de un .dmg.
+#
+# Se lanza a mano (Actions → Mac → Run workflow) o al subir una etiqueta v*; con etiqueta,
+# el .dmg se adjunta además a la release de GitHub. En los pull requests solo corre si tocan
+# el empaquetado.
+#
+# La app no va firmada con una cuenta de Apple (ver README, «Instalar en el Mac»).
+
+name: Mac
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/mac.yml
+      - backend/packaging/**
+      - backend/scripts/build_app.py
+      - backend/scripts/make_dmg_background.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dmg:
+    name: SetID.app y .dmg
+    runs-on: macos-14
+    timeout-minutes: 40
+    # Escritura solo para adjuntar el .dmg a la release cuando se sube una etiqueta.
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Dependencias
+        run: |
+          uv sync --locked --all-extras
+          brew install create-dmg
+
+      # Builds estáticas de ffmpeg para arm64 de https://ffmpeg.martin-riedl.de (última
+      # versión estable). Se comprueba el SHA256 publicado junto a cada zip, la arquitectura
+      # y que solo enlacen bibliotecas del sistema.
+      - name: ffmpeg y ffprobe (estáticos, arm64)
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/ffmpeg"
+          mkdir -p "$dir"
+          for tool in ffmpeg ffprobe; do
+            url=$(curl -fsSL -o "$dir/$tool.zip" -w '%{url_effective}' \
+              "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/$tool.zip")
+            echo "$tool: $url"
+            expected=$(curl -fsSL "$url.sha256" | awk '{print $1}')
+            echo "$expected  $dir/$tool.zip" | shasum -a 256 -c -
+            unzip -o -q "$dir/$tool.zip" -d "$dir"
+            rm "$dir/$tool.zip"
+            chmod +x "$dir/$tool"
+            file "$dir/$tool" | grep -q arm64
+            if otool -L "$dir/$tool" | tail -n +2 | grep -v -E '^\s+(/usr/lib/|/System/)'; then
+              echo "::error::$tool enlaza bibliotecas que no son del sistema"
+              exit 1
+            fi
+            "$dir/$tool" -hide_banner -version | head -n 1
+          done
+          echo "SETID_FFMPEG_DIR=$dir" >> "$GITHUB_ENV"
+
+      # Interfaz (npm ci + build), PyInstaller, comprobaciones del .app y create-dmg.
+      - name: Construir SetID.app y el .dmg
+        run: uv run --with pillow python scripts/build_app.py --dmg
+
+      - name: Nombre del .dmg
+        id: dmg
+        run: echo "path=$(ls dist/*.dmg)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SetID-mac
+          path: backend/${{ steps.dmg.outputs.path }}
+          if-no-files-found: error
+          retention-days: 30
+
+      # El fondo, aparte, para revisarlo sin montar el .dmg.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: SetID-mac-dmg-background
+          path: backend/build/dmg/background*.png
+          retention-days: 7
+
+      - name: Adjuntar a la release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+          DMG: ${{ steps.dmg.outputs.path }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "SetID $TAG" --generate-notes
+          fi
+          gh release upload "$TAG" "$DMG" --clobber

@@ -7,6 +7,8 @@ contexto, así que basta con fijarlo en la tarea del trabajo.
 
 from __future__ import annotations
 
+import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -97,16 +99,40 @@ def run(args: Sequence[str], *, timeout: float, program: str | None = None) -> P
     return ProcessResult(stdout, stderr)
 
 
-CLI_EXE = "setid-cli.exe"
 YT_DLP_FLAG = "--yt-dlp"
+
+
+def cli_executable_name() -> str:
+    return "setid-cli.exe" if sys.platform == "win32" else "setid-cli"
 
 
 def yt_dlp_command() -> list[str]:
     """yt-dlp se ejecuta desde el propio entorno, con la versión fijada en uv.lock.
 
-    En el ejecutable empaquetado no hay ``python -m``: lo ejecuta ``setid-cli.exe``, que va
-    junto a ``SetID.exe`` y lleva yt-dlp dentro.
+    En el ejecutable empaquetado no hay ``python -m``: lo ejecuta ``setid-cli``, que va
+    junto al ejecutable de la app (en el Mac, ambos en ``SetID.app/Contents/MacOS``) y
+    lleva yt-dlp dentro.
     """
     if getattr(sys, "frozen", False):
-        return [str(Path(sys.executable).with_name(CLI_EXE)), YT_DLP_FLAG]
+        return [str(Path(sys.executable).with_name(cli_executable_name())), YT_DLP_FLAG]
     return [sys.executable, "-m", "yt_dlp"]
+
+
+def bundled_program(name: str) -> str:
+    """Ruta de un programa externo (ffmpeg, ffprobe).
+
+    Primero el que va dentro del ejecutable empaquetado (carpeta ``bin`` junto a los
+    módulos; en el Mac, ``SetID.app/Contents/Frameworks/bin``). Si no lo hay, el del PATH.
+    En el Mac las apps abiertas desde el Finder no heredan el PATH de la terminal, así que
+    también se mira donde instala Homebrew.
+    """
+    filename = f"{name}.exe" if sys.platform == "win32" else name
+    if bundle := getattr(sys, "_MEIPASS", None):
+        candidate = Path(bundle) / "bin" / filename
+        if candidate.is_file():
+            return str(candidate)
+    if sys.platform == "darwin":
+        dirs = [os.environ.get("PATH", ""), "/opt/homebrew/bin", "/usr/local/bin"]
+        if found := shutil.which(name, path=os.pathsep.join(d for d in dirs if d)):
+            return found
+    return name
