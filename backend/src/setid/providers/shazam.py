@@ -55,22 +55,31 @@ def parse_response(payload: Any, confidence: float, provider: str = "shazam") ->
     )
 
 
-class _HttpxClient:
-    """Implementa la interfaz HTTP de shazamio con httpx."""
+def _httpx_client(client: httpx.AsyncClient) -> Any:
+    """Cliente HTTP para shazamio hecho con httpx.
 
-    def __init__(self, client: httpx.AsyncClient) -> None:
-        self._client = client
+    La clase se define aquí dentro porque hereda de la interfaz de shazamio, que es una
+    dependencia opcional y solo se importa cuando se elige este proveedor.
+    """
+    from shazamio.interfaces.client import HTTPClientInterface
 
-    async def request(self, method: str, url: str, *args: Any, **kwargs: Any) -> Any:
-        if method.upper() != "POST":
-            raise SegmentProviderError("shazam: método no soportado")
-        response = await post_or_retryable(
-            self._client, "shazam", url, headers=kwargs.get("headers"), json=kwargs.get("json")
-        )
-        try:
-            return response.json()
-        except ValueError as exc:
-            raise SegmentProviderError("shazam: respuesta no es JSON") from exc
+    class HttpxClient(HTTPClientInterface):
+        async def request(self, method: str, url: str, **kwargs: Any) -> Any:
+            if method.upper() != "POST":
+                raise SegmentProviderError("shazam: método no soportado")
+            response = await post_or_retryable(
+                client, "shazam", url, headers=kwargs.get("headers"), json=kwargs.get("json")
+            )
+            try:
+                return response.json()
+            except ValueError as exc:
+                raise SegmentProviderError("shazam: respuesta no es JSON") from exc
+
+        async def request_text(self, url: str, *, content_type: str, **kwargs: Any) -> str:
+            # Solo se usa el reconocimiento; el resto de la API de shazamio no se expone.
+            raise SegmentProviderError("shazam: operación no soportada")
+
+    return HttpxClient()
 
 
 class ShazamProvider:
@@ -95,7 +104,7 @@ class ShazamProvider:
             ) from exc
         self._confidence = confidence
         self._client = client or httpx.AsyncClient(timeout=timeout_s)
-        self._shazam = Shazam(http_client=_HttpxClient(self._client))
+        self._shazam = Shazam(http_client=_httpx_client(self._client))
 
     async def identify(self, segment: bytes) -> Match | None:
         from shazamio_core.shazamio_core import SignatureError
@@ -104,7 +113,7 @@ class ShazamProvider:
             signature = await self._shazam.core_recognizer.recognize_bytes(value=segment)
         except SignatureError as exc:
             raise SegmentProviderError("shazam: no se pudo generar la huella") from exc
-        # Los errores HTTP ya llegan convertidos por _HttpxClient.
+        # Los errores HTTP ya llegan convertidos por el cliente de _httpx_client.
         payload = await self._shazam.send_recognize_request_v2(sig=signature)
         return parse_response(payload, self._confidence, self.name)
 
