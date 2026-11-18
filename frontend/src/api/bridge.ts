@@ -85,8 +85,12 @@ async function call<T>(fn: (api: RawApi) => Promise<Result<T>>): Promise<T> {
   let result: Result<T>
   try {
     result = await fn(api)
-  } catch {
-    throw new BridgeError('La app no ha respondido. Inténtalo de nuevo.')
+  } catch (err) {
+    // El motor o el puente han fallado de forma inesperada: se muestra la causa para que se
+    // pueda diagnosticar (no contiene datos sensibles: es el nombre y mensaje del error).
+    console.error('SetID: fallo en la llamada al motor', err)
+    const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+    throw new BridgeError(`La app no ha respondido (${detail.slice(0, 200)}). Inténtalo de nuevo.`)
   }
   if (!result || typeof result !== 'object' || !('ok' in result)) {
     throw new BridgeError('Respuesta inesperada del motor de la app.')

@@ -103,7 +103,7 @@ registrado en `setid.db` (fuente, proveedor, estado, mensajes de error) y los ev
 | Amenaza | Mitigación |
 |---------|------------|
 | JavaScript de la página llama a métodos internos de Python | pywebview expone todos los métodos públicos del objeto **y de sus atributos públicos**, así que todo el estado de `Api` va en atributos privados (`_manager`, `_store`, `_window`…). Cada método valida tipos, rangos y enums antes de hacer nada (`app/bridge.py`). |
-| JavaScript inyectado (XSS) que usa el puente | CSP en el `index.html` del build: `default-src 'self'`, `script-src 'self'`, sin `unsafe-inline` ni `unsafe-eval`, `img-src 'self' data: https://*.mzstatic.com` (única excepción, para las carátulas), `connect-src 'self'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`, `frame-src 'none'` (`frontend/vite.config.ts`). |
+| JavaScript inyectado (XSS) que usa el puente | CSP en el `index.html` del build: `default-src 'self'`, `script-src 'self'`, sin `unsafe-inline` ni `unsafe-eval` (en el Mac sí lleva `unsafe-eval`, ver *Riesgos residuales*), `img-src 'self' data: https://*.mzstatic.com` (única excepción, para las carátulas), `connect-src 'self'`, `object-src 'none'`, `base-uri 'none'`, `form-action 'none'`, `frame-src 'none'` (`frontend/vite.config.ts`). |
 | Abrir URLs o programas arbitrarios desde la interfaz (`file:///…calc.exe`) | `open_external` solo abre en el navegador del sistema URLs `https` sin credenciales ni puerto y con host en una lista blanca: YouTube, SoundCloud, Beatport y Spotify (`links.py`, `is_allowed_external`). |
 | Herramientas de desarrollo en producción | Las DevTools solo se abren con `SETID_DEBUG`. |
 
@@ -137,5 +137,11 @@ registrado en `setid.db` (fuente, proveedor, estado, mensajes de error) y los ev
   la huella, pero pueden ser erróneos o engañosos.
 - **Ejecutable sin firma de código.** Windows SmartScreen lo marcará como desconocido y no hay
   forma de verificar su origen más allá de construirlo uno mismo.
+- **En el Mac la CSP permite `unsafe-eval`.** pywebview crea las funciones del puente con
+  `new Function` y entrega cada respuesta de Python con `eval`. WebView2 no aplica la CSP a ese
+  código inyectado, pero WKWebView sí, y sin la excepción la app no funciona. Sigue sin haber
+  scripts inline ni de otros orígenes, y la interfaz no tiene ningún `eval` propio ni convierte
+  texto de terceros en código, así que la excepción solo pesaría si ya hubiera un XSS. Solo
+  afecta al build hecho en un Mac (`scriptSrc` en `frontend/vite.config.ts`).
 - **Los datos locales no están cifrados.** `setid.db`, `settings.json` y los logs son legibles por
   cualquier proceso del mismo usuario. Contienen títulos y enlaces, no audio ni claves.
