@@ -66,11 +66,13 @@ jobs:
           set -euo pipefail
           dir="$RUNNER_TEMP/ffmpeg"
           mkdir -p "$dir"
+          # Los runners a veces fallan al resolver el nombre del servidor: se reintenta.
+          retry=(--retry 6 --retry-delay 5 --retry-all-errors --connect-timeout 20)
           for tool in ffmpeg ffprobe; do
-            url=$(curl -fsSL -o "$dir/$tool.zip" -w '%{url_effective}' \
+            url=$(curl -fsSL "${retry[@]}" -o "$dir/$tool.zip" -w '%{url_effective}' \
               "https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/$tool.zip")
             echo "$tool: $url"
-            expected=$(curl -fsSL "$url.sha256" | awk '{print $1}')
+            expected=$(curl -fsSL "${retry[@]}" "$url.sha256" | awk '{print $1}')
             echo "$expected  $dir/$tool.zip" | shasum -a 256 -c -
             unzip -o -q "$dir/$tool.zip" -d "$dir"
             rm "$dir/$tool.zip"
