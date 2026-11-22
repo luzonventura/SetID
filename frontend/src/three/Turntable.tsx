@@ -28,7 +28,9 @@ import {
   keyLabelTexture,
   knurlTexture,
   slipmatTexture,
+  sharedFinish,
   strobeRimTexture,
+  wearTexture,
 } from './deckTextures'
 import {
   ARM_PIVOT,
@@ -121,7 +123,32 @@ function Foot({ x, z, knurl }: { x: number; z: number; knurl: THREE.Texture }) {
   )
 }
 
+const PLATE_NORMAL = new THREE.Vector2(0.95, 0.95)
+const BODY_NORMAL = new THREE.Vector2(0.3, 0.3)
+
 function Plinth() {
+  // Cubierta de aluminio granallado con pintura negra mate; cuerpo de compuesto algo más
+  // basto. Encima, huellas donde se apoyan las manos y algo de polvo.
+  const plate = useMemo(() => sharedFinish(0x1200, 1.05), [])
+  const body = useMemo(() => sharedFinish(0x7, 1.8), [])
+  const wear = useMemo(
+    () =>
+      wearTexture({ width: DECK_W, depth: DECK_D }, [
+        { x: -1.84, z: 1.45, spread: 0.28, amount: 1.2 }, // START · STOP
+        { x: KNOB_AT.x, z: KNOB_AT.z, spread: 0.22, amount: 0.7 }, // encendido
+        { x: FADER.x, z: (FADER.z0 + FADER.z1) / 2, spread: 0.45, amount: 1 }, // pitch
+        { x: PIVOT_AT.x - 0.2, z: PIVOT_AT.z + 0.55, spread: 0.3, amount: 0.8 }, // brazo
+        { x: -1.2, z: 1.6, spread: 0.25, amount: 0.5 }, // 33 / 45
+      ]),
+    [],
+  )
+  useEffect(
+    () => () => {
+      wear.map.dispose()
+      wear.roughness.dispose()
+    },
+    [wear],
+  )
   const knurl = useDisposable(() => {
     const t = knurlTexture()
     t.repeat.set(4, 1)
@@ -152,7 +179,16 @@ function Plinth() {
         castShadow
         receiveShadow
       >
-        <meshStandardMaterial {...MATTE} />
+        <meshPhysicalMaterial
+          color="#1b1c20"
+          roughness={1}
+          roughnessMap={plate.roughness}
+          normalMap={plate.normal}
+          normalScale={PLATE_NORMAL}
+          metalness={0.38}
+          clearcoat={0.12}
+          clearcoatRoughness={0.45}
+        />
       </RoundedBox>
       {/* Junta entre cubierta y cuerpo */}
       <mesh position={[0, -0.128, 0]}>
@@ -168,7 +204,14 @@ function Plinth() {
         castShadow
         receiveShadow
       >
-        <meshStandardMaterial color="#131416" roughness={0.55} metalness={0.15} />
+        <meshStandardMaterial
+          color="#141518"
+          roughness={0.95}
+          roughnessMap={body.roughness}
+          normalMap={body.normal}
+          normalScale={BODY_NORMAL}
+          metalness={0.12}
+        />
       </RoundedBox>
       <Foot x={-fx} z={-fz} knurl={knurl} />
       <Foot x={fx} z={-fz} knurl={knurl} />
@@ -184,6 +227,20 @@ function Plinth() {
           roughness={0.5}
           polygonOffset
           polygonOffsetFactor={-2}
+        />
+      </mesh>
+      {/* Uso: huellas (grasa, brillan algo más) y polvo, encima de la serigrafía. */}
+      <mesh position={[0, 0.0016, 0]} rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[DECK_W, DECK_D]} />
+        <meshStandardMaterial
+          map={wear.map}
+          roughnessMap={wear.roughness}
+          roughness={1}
+          metalness={0.2}
+          transparent
+          depthWrite={false}
+          polygonOffset
+          polygonOffsetFactor={-3}
         />
       </mesh>
       {/* Rebaje de la base del brazo */}

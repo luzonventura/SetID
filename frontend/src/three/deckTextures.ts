@@ -246,3 +246,206 @@ export function deckPrintTexture(m: DeckMarks): THREE.CanvasTexture {
   texture.anisotropy = 8
   return texture
 }
+
+// --- Acabado del chasis ---------------------------------------------------------------
+
+/** Pseudoaleatorio con semilla (mismo resultado en cada arranque). */
+function random(seed: number): () => number {
+  let s = seed >>> 0
+  return () => {
+    s = (s + 0x6d2b79f5) >>> 0
+    let t = s
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+export interface FinishMaps {
+  roughness: THREE.CanvasTexture
+  normal: THREE.CanvasTexture
+}
+
+/**
+ * Acabado granallado (aluminio con chorro de microesferas y pintura negra mate), repetible
+ * sin costuras: una altura de grano fino de la que salen la rugosidad (con algún destello
+ * metálico más pulido) y el relieve. `perUnit` = repeticiones por unidad de escena (100 mm).
+ */
+function blastedFinish(seed: number, perUnit: number, size = 512): FinishMaps {
+  const rand = random(seed)
+  const height = new Float32Array(size * size)
+  // Grano: muchas «microesferas» con caída suave, envueltas en los bordes (repetible).
+  const bumps = Math.round(size * size * 0.09)
+  for (let i = 0; i < bumps; i += 1) {
+    const cx = rand() * size
+    const cy = rand() * size
+    const radius = 0.8 + rand() * 1.6
+    const amp = rand() < 0.5 ? -1 : 1
+    const r = Math.ceil(radius)
+    for (let dy = -r; dy <= r; dy += 1) {
+      for (let dx = -r; dx <= r; dx += 1) {
+        const d = Math.hypot(dx + (cx % 1), dy + (cy % 1)) / radius
+        if (d >= 1) continue
+        const x = (Math.floor(cx) + dx + size) % size
+        const y = (Math.floor(cy) + dy + size) % size
+        height[y * size + x] += amp * (1 - d * d) * 0.5
+      }
+    }
+  }
+
+  const [rEl, rCtx] = canvas(size)
+  const [nEl, nCtx] = canvas(size)
+  const rough = rCtx.createImageData(size, size)
+  const normal = nCtx.createImageData(size, size)
+  const at = (x: number, y: number) => height[((y + size) % size) * size + ((x + size) % size)]
+  const flecks = new Set<number>()
+  for (let i = 0; i < size * size * 0.004; i += 1) {
+    flecks.add(Math.floor(rand() * size * size))
+  }
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const i = y * size + x
+      const o = i * 4
+      // Rugosidad: mate (≈0,7) con variación del grano y destellos metálicos sueltos (≈0,3).
+      const r = flecks.has(i) ? 70 : 178 + height[i] * 40
+      rough.data[o] = rough.data[o + 1] = rough.data[o + 2] = Math.max(0, Math.min(255, r))
+      rough.data[o + 3] = 255
+      // Relieve por diferencias centrales (envolviendo en los bordes).
+      const nx = (at(x - 1, y) - at(x + 1, y)) * 1.4
+      const ny = (at(x, y + 1) - at(x, y - 1)) * 1.4
+      const k = 1 / Math.hypot(nx, ny, 1)
+      normal.data[o] = (nx * k * 0.5 + 0.5) * 255
+      normal.data[o + 1] = (ny * k * 0.5 + 0.5) * 255
+      normal.data[o + 2] = (k * 0.5 + 0.5) * 255
+      normal.data[o + 3] = 255
+    }
+  }
+  rCtx.putImageData(rough, 0, 0)
+  nCtx.putImageData(normal, 0, 0)
+
+  const wrap = (el: HTMLCanvasElement) => {
+    const texture = new THREE.CanvasTexture(el)
+    texture.colorSpace = THREE.NoColorSpace
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping
+    texture.repeat.set(perUnit, perUnit)
+    texture.anisotropy = 8
+    return texture
+  }
+  return { roughness: wrap(rEl), normal: wrap(nEl) }
+}
+
+export interface Wear {
+  /** Color y opacidad: polvo claro y huellas algo más oscuras. */
+  map: THREE.CanvasTexture
+  /** Las huellas son grasa: más pulidas (brillan); el polvo, muy mate. */
+  roughness: THREE.CanvasTexture
+}
+
+/**
+ * Uso: huellas y roces donde se apoyan las manos (alrededor de START · STOP, del pitch y del
+ * brazo) y un poco de polvo repartido. Se pinta sobre una capa transparente encima de la
+ * cubierta. Las posiciones van en unidades de escena, con el origen en el centro del chasis.
+ */
+export function wearTexture(
+  deck: { width: number; depth: number },
+  hands: { x: number; z: number; spread: number; amount: number }[],
+  pxPerUnit = 220,
+): Wear {
+  const w = Math.round(deck.width * pxPerUnit)
+  const h = Math.round(deck.depth * pxPerUnit)
+  const rand = random(0x0d0)
+  const [mEl, mCtx] = canvas(w, h)
+  const [rEl, rCtx] = canvas(w, h)
+  rCtx.fillStyle = 'rgb(150,150,150)'
+  rCtx.fillRect(0, 0, w, h)
+  const toPx = (x: number, z: number): [number, number] => [
+    (x / deck.width + 0.5) * w,
+    (z / deck.depth + 0.5) * h,
+  ]
+
+  // Huellas: manchas ovaladas, suaves, con algo de estría (la piel deja surcos).
+  for (const spot of hands) {
+    const [cx, cy] = toPx(spot.x, spot.z)
+    const n = Math.round(14 * spot.amount)
+    for (let i = 0; i < n; i += 1) {
+      const angle = rand() * Math.PI * 2
+      const dist = Math.sqrt(rand()) * spot.spread * pxPerUnit
+      const x = cx + Math.cos(angle) * dist
+      const y = cy + Math.sin(angle) * dist
+      const rx = (0.05 + rand() * 0.06) * pxPerUnit
+      const ry = rx * (0.6 + rand() * 0.3)
+      const rot = rand() * Math.PI
+      for (const [ctx, colour] of [
+        [mCtx, 'rgba(0,0,0,'],
+        [rCtx, 'rgba(40,40,40,'],
+      ] as const) {
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.rotate(rot)
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx)
+        g.addColorStop(0, `${colour}${ctx === mCtx ? 0.16 : 0.75})`)
+        g.addColorStop(1, `${colour}0)`)
+        ctx.fillStyle = g
+        ctx.scale(1, ry / rx)
+        ctx.beginPath()
+        ctx.arc(0, 0, rx, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
+    }
+  }
+
+  // Polvo: motas claras sueltas (y algún hilo de pelusa).
+  for (let i = 0; i < w * h * 0.00035; i += 1) {
+    const x = rand() * w
+    const y = rand() * h
+    const a = 0.08 + rand() * 0.22
+    mCtx.fillStyle = `rgba(170,170,175,${a})`
+    rCtx.fillStyle = 'rgb(255,255,255)'
+    const s = 0.5 + rand() * 0.6
+    mCtx.fillRect(x, y, s, s)
+    rCtx.fillRect(x, y, s, s)
+  }
+  mCtx.lineCap = 'round'
+  for (let i = 0; i < 14; i += 1) {
+    const x = rand() * w
+    const y = rand() * h
+    const angle = rand() * Math.PI * 2
+    const len = 6 + rand() * 14
+    mCtx.strokeStyle = 'rgba(170,170,175,0.18)'
+    mCtx.lineWidth = 0.6
+    mCtx.beginPath()
+    mCtx.moveTo(x, y)
+    mCtx.quadraticCurveTo(
+      x + Math.cos(angle + 0.8) * len * 0.6,
+      y + Math.sin(angle + 0.8) * len * 0.6,
+      x + Math.cos(angle) * len,
+      y + Math.sin(angle) * len,
+    )
+    mCtx.stroke()
+  }
+
+  const map = new THREE.CanvasTexture(mEl)
+  map.colorSpace = THREE.SRGBColorSpace
+  map.anisotropy = 8
+  const roughness = new THREE.CanvasTexture(rEl)
+  roughness.colorSpace = THREE.NoColorSpace
+  roughness.anisotropy = 8
+  return { map, roughness }
+}
+
+const finishes = new Map<string, FinishMaps>()
+
+/**
+ * Acabado compartido: el plato se vuelve a montar al cambiar de pantalla y estas texturas son
+ * siempre iguales, así que se calculan una vez por sesión (~60 ms cada una) y no se liberan.
+ */
+export function sharedFinish(seed: number, perUnit: number): FinishMaps {
+  const key = `${seed}:${perUnit}`
+  let finish = finishes.get(key)
+  if (!finish) {
+    finish = blastedFinish(seed, perUnit)
+    finishes.set(key, finish)
+  }
+  return finish
+}
