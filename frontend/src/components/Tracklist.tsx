@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { api } from '../api/bridge'
 import type { Entry } from '../api/types'
+import { safePreviewUrl } from '../lib/cover'
 import { confidenceLevel, formatTime } from '../lib/format'
 import { Suggestions } from './Community'
 import { PreviewCover } from './PreviewCover'
@@ -127,6 +128,7 @@ export function Tracklist({
   const [hideSeen, setHideSeen] = useState(false)
   const identified = entries.filter((e) => e.source !== 'unknown')
   const seenCount = identified.filter((e) => e.seen).length
+  const playable = identified.filter((e) => safePreviewUrl(e.preview_url)).length
   // El track elegido desde el disco se muestra aunque esté visto y oculto.
   const shown = hideSeen ? entries.filter((e) => !e.seen || e.position === highlight) : entries
 
@@ -144,8 +146,21 @@ export function Tracklist({
     <>
       {identified.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-          <p className="label">
-            <span className="timecode text-chalk">{seenCount}</span> de {identified.length} vistos
+          <p className="label flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span>
+              <span className="timecode text-chalk">{seenCount}</span> de {identified.length} vistos
+            </span>
+            <span aria-hidden className="h-3 w-px bg-line-strong" />
+            <span className="flex items-center gap-2">
+              <span aria-hidden className="grid size-3.5 place-items-center bg-paper text-ink">
+                <svg viewBox="0 0 24 24" className="ml-px size-2">
+                  <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+                </svg>
+              </span>
+              {playable > 0
+                ? `${playable} con preescucha · pulsa la carátula`
+                : 'Sin preescuchas todavía'}
+            </span>
           </p>
           <label className="label flex cursor-pointer items-center gap-2.5 hover:text-chalk">
             <input

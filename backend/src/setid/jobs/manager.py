@@ -117,8 +117,9 @@ class JobManager:
         self._live: dict[int, list[TracklistEntry]] = {}
         # Carátulas: una cola aparte para no retrasar el siguiente trabajo.
         self._artwork_factory = artwork_factory
-        self._artwork_queue: asyncio.Queue[int] | None = None
-        self._artwork_seen: set[int] = set()
+        self._artwork = ArtworkQueue()
+        self._artwork_wake: asyncio.Event | None = None
+        self._artwork_busy = False
         self.artwork_idle = threading.Event()
         self.artwork_idle.set()
 
@@ -156,7 +157,7 @@ class JobManager:
         self._loop = asyncio.get_running_loop()
         self._queue = asyncio.Queue()
         self._settings_changed = asyncio.Event()
-        self._artwork_queue = asyncio.Queue()
+        self._artwork_wake = asyncio.Event()
         artwork = asyncio.create_task(self._artwork_worker())
         self._ready.set()
         try:
@@ -549,37 +550,46 @@ class JobManager:
 
         return handle
 
-    # --- Carátulas (hilo del worker, tarea aparte) -------------------------------------------
+    # --- Carátulas y preescuchas (hilo del worker, tarea aparte) ----------------------------
 
     def _schedule_artwork(self, job_id: int) -> None:
-        """Busca las carátulas que faltan, una vez por trabajo y sesión. Cualquier hilo."""
-        if self._loop is None or job_id in self._artwork_seen:
-            return
-        self._artwork_seen.add(job_id)
-        self.artwork_idle.clear()
-        self._loop.call_soon_threadsafe(self._put_artwork, job_id)
+        """Busca lo que falte de un trabajo, una vez por sesión. Cualquier hilo.
 
-    def _put_artwork(self, job_id: int) -> None:
-        assert self._artwork_queue is not None  # noqa: S101
-        self._artwork_queue.put_nowait(job_id)
+        Pedirlo otra vez (p. ej. al abrir ese set) lo pone el primero de la cola.
+        """
+        if self._loop is None:
+            return
+        # Se marca ya como ocupado: quien espere a que terminen las búsquedas (los tests) no
+        # debe ver «libre» antes de que el worker reciba el encargo.
+        self.artwork_idle.clear()
+        self._loop.call_soon_threadsafe(self._push_artwork, job_id)
+
+    def _push_artwork(self, job_id: int) -> None:
+        assert self._artwork_wake is not None  # noqa: S101
+        if self._artwork.push(job_id):
+            self._artwork_wake.set()
+        elif not self._artwork_busy:
+            self.artwork_idle.set()  # ya estaba hecho y no hay nada en marcha
 
     async def _artwork_worker(self) -> None:
-        assert self._artwork_queue is not None  # noqa: S101
+        assert self._artwork_wake is not None  # noqa: S101
         finder: ArtworkFinder | None = None
         try:
             while True:
-                job_id = await self._artwork_queue.get()
-                try:
-                    if self._store.load().artwork_lookup:
-                        finder = finder or self._artwork_factory(ArtworkStore(self._engine))
-                        await self._enrich_artwork(job_id, finder)
-                except asyncio.CancelledError:
-                    raise
-                except Exception:
-                    log.exception("error buscando carátulas", extra={"job_id": job_id})
-                finally:
-                    if self._artwork_queue.empty():
-                        self.artwork_idle.set()
+                await self._artwork_wake.wait()
+                self._artwork_wake.clear()
+                self._artwork_busy = True
+                while (job_id := self._artwork.pop()) is not None:
+                    try:
+                        if self._store.load().artwork_lookup:
+                            finder = finder or self._artwork_factory(ArtworkStore(self._engine))
+                            await self._enrich_artwork(job_id, finder)
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception:
+                        log.exception("error buscando carátulas", extra={"job_id": job_id})
+                self._artwork_busy = False
+                self.artwork_idle.set()
         finally:
             if finder is not None:
                 with contextlib.suppress(Exception):
@@ -587,6 +597,10 @@ class JobManager:
 
     async def _enrich_artwork(self, job_id: int, finder: ArtworkFinder) -> None:
         for entry in _missing_media(self.repo.entries(job_id)):
+            if self._artwork.has_newer():
+                # Se ha abierto otro set: va primero y este sigue después donde lo dejó.
+                self._artwork.requeue(job_id)
+                return
             media = await finder.find(entry.artist, entry.title)
             if not any(media) or not self.repo.fill_media(job_id, {entry.position: media}):
                 continue
@@ -594,6 +608,46 @@ class JobManager:
             # haberse borrado mientras tanto.
             if self.repo.get(job_id) is not None:
                 self._emit_tracklist(job_id, self.repo.entries(job_id), live=False)
+
+
+class ArtworkQueue:
+    """Trabajos pendientes de buscar carátulas y preescuchas.
+
+    Va primero el último que se ha pedido: al abrir un set, sus búsquedas se adelantan a las
+    de los sets del historial. Cada trabajo se procesa una vez por sesión. Solo se usa desde el
+    hilo del worker.
+    """
+
+    def __init__(self) -> None:
+        self._order: dict[int, int] = {}  # trabajo pendiente -> turno en que se pidió
+        self._turn = 0
+        self._current_turn = 0  # turno del trabajo que se está procesando
+        self._started: set[int] = set()
+
+    def push(self, job_id: int) -> bool:
+        """Lo pone el primero. Devuelve False si ya se procesó (o se está procesando)."""
+        if job_id in self._started and job_id not in self._order:
+            return False
+        self._turn += 1
+        self._order[job_id] = self._turn
+        return True
+
+    def pop(self) -> int | None:
+        if not self._order:
+            return None
+        job_id = max(self._order, key=self._order.__getitem__)
+        self._current_turn = self._order.pop(job_id)
+        self._started.add(job_id)
+        return job_id
+
+    def has_newer(self) -> bool:
+        """¿Se ha pedido otro trabajo después del que se está procesando?"""
+        return any(turn > self._current_turn for turn in self._order.values())
+
+    def requeue(self, job_id: int) -> None:
+        """Devuelve a la cola el trabajo en curso, con su turno: detrás de los más recientes."""
+        self._started.discard(job_id)
+        self._order[job_id] = self._current_turn
 
 
 def _missing_media(entries: list[TracklistEntry]) -> list[TracklistEntry]:

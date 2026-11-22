@@ -78,6 +78,17 @@ export function PreviewCover({
       className={`group/pv relative block shrink-0 cursor-pointer ${className}`}
     >
       {cover}
+      {/* Marca siempre visible: esta carátula se puede escuchar. */}
+      <span
+        aria-hidden
+        className={`absolute right-0 bottom-0 grid size-[18px] place-items-center bg-paper text-ink transition-opacity duration-200 ${
+          active ? 'opacity-0' : 'group-hover/pv:opacity-0 group-focus-visible/pv:opacity-0'
+        }`}
+      >
+        <svg viewBox="0 0 24 24" className="ml-px size-2.5">
+          <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+        </svg>
+      </span>
       <span
         aria-hidden
         className={`absolute inset-0 grid place-items-center bg-ink/60 text-paper transition-opacity duration-200 ${

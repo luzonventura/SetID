@@ -209,3 +209,18 @@ def test_migrations_upgrade_an_existing_database(tmp_path: Path) -> None:
         assert session.exec(select(Artwork)).all() == []
         assert session.exec(select(SeenTrack)).all() == []
     engine.dispose()
+
+
+def test_artwork_queue_serves_the_latest_request_first() -> None:
+    from setid.jobs.manager import ArtworkQueue
+
+    queue = ArtworkQueue()
+    for job in (1, 2, 3):  # el historial carga tres sets
+        assert queue.push(job)
+    assert queue.pop() == 3
+    assert not queue.has_newer()
+    assert queue.push(1)  # el usuario abre el set 1: pasa delante
+    assert queue.has_newer()
+    queue.requeue(3)  # el 3 se interrumpe y sigue después
+    assert [queue.pop(), queue.pop(), queue.pop(), queue.pop()] == [1, 3, 2, None]
+    assert not queue.push(2)  # cada set una vez por sesión
