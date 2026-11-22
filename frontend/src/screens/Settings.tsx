@@ -402,8 +402,8 @@ export function Settings() {
       </Section>
 
       <Section
-        title="Carátulas"
-        hint="Shazam y AudD ya traen la carátula de cada track. Para las que falten se busca artista y título en el catálogo público de iTunes (sin clave ni cuenta) y se guardan en caché."
+        title="Carátulas y preescuchas"
+        hint="Shazam y AudD ya traen la carátula y la preescucha de 30 s de cada track. Para las que falten se busca artista y título en el catálogo público de iTunes (sin clave ni cuenta) y se guardan en caché."
       >
         <label className="flex cursor-pointer items-center gap-3 text-sm">
           <input
@@ -412,7 +412,7 @@ export function Settings() {
             onChange={(e) => set('artwork_lookup', e.target.checked)}
             className="size-4 accent-[var(--color-signal)]"
           />
-          Buscar en iTunes las carátulas que falten
+          Buscar en iTunes las carátulas y preescuchas que falten
         </label>
       </Section>
 

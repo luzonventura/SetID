@@ -8,6 +8,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from setid.artwork import cache_key
 from setid.community import Hint, HintKind, suggestions_for, track_key
 from setid.db.tables import CommunityHint, Job, JobStatus, TrackEntry
 from setid.links import search_links, timestamp_link
@@ -73,6 +74,11 @@ class EntryView(BaseModel):
     detections: int
     source: EntrySource
     cover_url: str | None = None
+    preview_url: str | None = None
+    # Identidad del track (artista y título normalizados), la misma en cualquier set: con
+    # ella la interfaz marca como visto el mismo track en todos los sets a la vez.
+    track_key: str | None = None
+    seen: bool = False
     timestamp_url: str | None
     search: dict[str, str] | None
     # Solo en los ID – ID: lo que dice la comunidad sobre ese tramo (sin verificar).
@@ -121,6 +127,7 @@ def entry_from_row(row: TrackEntry) -> TracklistEntry:
         detections=row.detections,
         source=row.source,
         cover_url=row.cover_url,
+        preview_url=row.preview_url,
     )
 
 
@@ -178,14 +185,18 @@ def entry_view(
     entry: TracklistEntry,
     hints: Sequence[Hint] = (),
     known: frozenset[tuple[str, str]] = frozenset(),
+    seen: frozenset[str] = frozenset(),
 ) -> EntryView:
     suggestions = (
         [hint_view(job, h) for h in suggestions_for(entry.start_s, entry.end_s, hints, known=known)]
         if entry.is_unknown and hints
         else []
     )
+    key = None if entry.is_unknown else cache_key(entry.artist, entry.title)
     return EntryView(
         **entry.model_dump(),
+        track_key=key,
+        seen=key in seen,
         timestamp_url=_timestamp(job, entry.start_s),
         search=None if entry.is_unknown else search_links(entry.artist, entry.title),
         suggestions=suggestions,
@@ -193,10 +204,13 @@ def entry_view(
 
 
 def tracklist_views(
-    job: JobView, entries: Sequence[TracklistEntry], hints: Sequence[Hint]
+    job: JobView,
+    entries: Sequence[TracklistEntry],
+    hints: Sequence[Hint],
+    seen: frozenset[str] = frozenset(),
 ) -> list[EntryView]:
     known = frozenset(track_key(e.artist, e.title) for e in entries if not e.is_unknown)
-    return [entry_view(job, e, hints, known) for e in entries]
+    return [entry_view(job, e, hints, known, seen) for e in entries]
 
 
 def community_view(job: JobView, hints: Sequence[Hint]) -> CommunityView:

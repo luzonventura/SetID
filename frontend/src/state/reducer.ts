@@ -61,6 +61,24 @@ export function reducer(state: State, action: Action): State {
           }
         case 'community':
           return { ...state, community: { ...state.community, [event.job_id]: event.community } }
+        case 'seen':
+          // Un track visto lo está en todos los sets donde suena.
+          return {
+            ...state,
+            tracklists: Object.fromEntries(
+              Object.entries(state.tracklists).map(([id, list]) => [
+                id,
+                list.entries.some((e) => e.track_key === event.track_key)
+                  ? {
+                      ...list,
+                      entries: list.entries.map((e) =>
+                        e.track_key === event.track_key ? { ...e, seen: event.seen } : e,
+                      ),
+                    }
+                  : list,
+              ]),
+            ),
+          }
         case 'job_deleted':
           return {
             ...state,

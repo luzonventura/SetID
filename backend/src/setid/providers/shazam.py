@@ -15,13 +15,25 @@ from typing import Any
 
 import httpx
 
-from setid.artwork import safe_artwork_url
+from setid.artwork import safe_artwork_url, safe_preview_url
 from setid.models import Match
 from setid.providers.base import (
     PermanentProviderError,
     SegmentProviderError,
     post_or_retryable,
 )
+
+
+def _preview(track: dict[str, Any]) -> str | None:
+    """La preescucha de Apple que Shazam incluye entre las acciones del track."""
+    for action in (track.get("hub") or {}).get("actions") or []:
+        if (
+            isinstance(action, dict)
+            and action.get("type") == "uri"
+            and (url := safe_preview_url(action.get("uri")))
+        ):
+            return url
+    return None
 
 
 def parse_response(payload: Any, confidence: float, provider: str = "shazam") -> Match | None:
@@ -52,6 +64,7 @@ def parse_response(payload: Any, confidence: float, provider: str = "shazam") ->
             (track.get("images") or {}).get("coverarthq")
             or (track.get("images") or {}).get("coverart")
         ),
+        preview_url=_preview(track),
     )
 
 

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -147,21 +149,63 @@ def test_artwork_store_caches_and_retries_old_misses(tmp_path: Path) -> None:
 
     from sqlmodel import Session
 
+    from setid.artwork import NO_MEDIA, TrackMedia
     from setid.db.tables import Artwork, utcnow
     from setid.jobs.repository import MISS_TTL, ArtworkStore
 
+    full = TrackMedia(
+        "https://is1-ssl.mzstatic.com/x/600x600bb.jpg",
+        "https://audio-ssl.itunes.apple.com/x/mzaf_1.plus.aac.p.m4a",
+    )
+    partial = TrackMedia(full.cover_url, None)
     engine = open_database(tmp_path / "setid.db")
     store = ArtworkStore(engine)
-    assert store.get("a|t") == (False, None)
-    store.put("a|t", "https://is1-ssl.mzstatic.com/x/600x600bb.jpg")
-    assert store.get("a|t") == (True, "https://is1-ssl.mzstatic.com/x/600x600bb.jpg")
-    store.put("b|t", None)
-    assert store.get("b|t") == (True, None)
+    assert store.get("a|t") is None
+    store.put("a|t", full)
+    store.put("b|t", NO_MEDIA)
+    store.put("c|t", partial)
+    assert (store.get("a|t"), store.get("b|t"), store.get("c|t")) == (full, NO_MEDIA, partial)
+
     with Session(engine) as session:
-        row = session.get(Artwork, "b|t")
-        assert row is not None
-        row.fetched_at = utcnow() - MISS_TTL - timedelta(days=1)
-        session.add(row)
+        for key in ("a|t", "b|t", "c|t"):
+            row = session.get(Artwork, key)
+            assert row is not None
+            row.fetched_at = utcnow() - MISS_TTL - timedelta(days=1)
+            session.add(row)
         session.commit()
-    assert store.get("b|t") == (False, None)  # sin carátula hace mucho: se vuelve a buscar
+    # Pasado el plazo, lo que quedó incompleto se vuelve a buscar; lo completo no.
+    assert (store.get("a|t"), store.get("b|t"), store.get("c|t")) == (full, None, None)
+    engine.dispose()
+
+
+def test_migrations_upgrade_an_existing_database(tmp_path: Path) -> None:
+    """La 0005 vacía la caché de carátulas y renombra su columna sin perder los tracklists."""
+    from alembic import command
+    from sqlmodel import Session, select
+
+    from setid.db.engine import make_engine
+    from setid.db.tables import Artwork, SeenTrack, TrackEntry
+
+    path = tmp_path / "old.db"
+    old = make_engine(path)
+    command.upgrade(alembic_config(old), "0004")
+    old.dispose()
+    with closing(sqlite3.connect(path)) as raw, raw:
+        raw.execute(
+            "INSERT INTO job (id, source_type, source, provider, status, progress, queries_used,"
+            " retries, estimated_cost, force, created_at)"
+            " VALUES (1, 'upload', 'x.wav', 'fake', 'done', 100, 0, 0, 0, 0, '2026-01-01')"
+        )
+        raw.execute(
+            "INSERT INTO track_entry (job_id, position, start_s, end_s, artist, title, detections,"
+            " source, cover_url) VALUES (1, 1, 0, 30, 'A', 'T', 2, 'fingerprint', 'c.jpg')"
+        )
+        raw.execute("INSERT INTO artwork (key, url, fetched_at) VALUES ('a|t', 'c.jpg', '2026')")
+
+    engine = open_database(path)  # aplica las migraciones pendientes
+    with Session(engine) as session:
+        entry = session.exec(select(TrackEntry)).one()
+        assert (entry.cover_url, entry.preview_url) == ("c.jpg", None)
+        assert session.exec(select(Artwork)).all() == []
+        assert session.exec(select(SeenTrack)).all() == []
     engine.dispose()

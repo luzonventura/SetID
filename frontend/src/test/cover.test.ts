@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { hueFor, safeCoverUrl } from '../lib/cover'
+import { hueFor, safeCoverUrl, safePreviewUrl } from '../lib/cover'
 
 describe('safeCoverUrl', () => {
   it('acepta la CDN de Apple por https', () => {
@@ -25,6 +25,29 @@ describe('safeCoverUrl', () => {
 
   it('acepta imágenes data: (modo demo)', () => {
     expect(safeCoverUrl('data:image/svg+xml;utf8,%3Csvg%3E')).not.toBeNull()
+  })
+})
+
+describe('safePreviewUrl', () => {
+  const preview =
+    'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/mzaf_1.plus.aac.p.m4a'
+
+  it('acepta las preescuchas de Apple por https y quita la query', () => {
+    expect(safePreviewUrl(preview)).toBe(preview)
+    expect(safePreviewUrl(`${preview}?x=1#y`)).toBe(preview)
+  })
+
+  it.each([
+    null,
+    'http://audio-ssl.itunes.apple.com/a.m4a',
+    'https://evil.example.com/a.m4a',
+    'https://itunes.apple.com.evil.example/a.m4a',
+    'https://audio-ssl.itunes.apple.com/a.exe',
+    'https://user@audio-ssl.itunes.apple.com/a.m4a',
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+  ])('rechaza %s', (url) => {
+    expect(safePreviewUrl(url)).toBeNull()
   })
 })
 

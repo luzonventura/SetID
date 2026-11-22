@@ -16,8 +16,9 @@ eliges un archivo de audio, y SetID devuelve el tracklist con marcas de tiempo.
   aparecen como `ID – ID`.
 - **Tracklist de la comunidad**: lee la descripción y los comentarios del vídeo como
   sugerencias sin verificar.
-- **Carátulas** de cada track: las que dan Shazam y AudD y, si falta alguna, la del catálogo
-  público de iTunes.
+- **Carátulas y preescuchas de 30 s** de cada track: las que dan Shazam y AudD y, si falta
+  alguna, las del catálogo público de iTunes. Se escuchan pulsando la carátula.
+- **Marca de visto** por track, que vale en todos los sets, y filtro para ocultar los vistos.
 - Exportación a TXT, CSV, JSON y M3U, con enlaces de búsqueda en Beatport, Spotify y YouTube.
 - El audio nunca se guarda: se borra al terminar cada trabajo.
 
@@ -144,13 +145,23 @@ Todo aparece en la pestaña **Comunidad** y como sugerencia en los tramos `ID �
 marcado como **sin verificar** y sin mezclarse con lo que identifica la huella. Se desactiva en
 Ajustes o con `--no-community`.
 
-## Carátulas
+## Carátulas y preescuchas
 
-Shazam y AudD devuelven la carátula junto con el track. Para las que falten, al terminar el
-análisis SetID busca artista y título en la API pública de búsqueda de iTunes (sin clave ni
-cuenta), a un ritmo bajo y guardando el resultado en la base de datos para no repetir
-consultas. Solo se aceptan imágenes servidas por https desde la CDN de Apple
-(`*.mzstatic.com`). La búsqueda en iTunes se desactiva en Ajustes.
+Shazam y AudD devuelven la carátula y la preescucha de 30 s junto con el track. Para las que
+falten, al terminar el análisis SetID busca artista y título en la API pública de búsqueda de
+iTunes (sin clave ni cuenta), a un ritmo bajo y guardando el resultado en la base de datos para
+no repetir consultas. Solo se aceptan imágenes de la CDN de Apple (`*.mzstatic.com`) y audio de
+`*.itunes.apple.com`, siempre por https. La búsqueda en iTunes se desactiva en Ajustes.
+
+La preescucha suena al pulsar la carátula del track; solo suena una a la vez y se para al salir
+de la pantalla del set. Los tracks que no están en el catálogo de Apple (unreleased, IDs…) no
+tienen preescucha.
+
+## Tracks vistos
+
+Cada track identificado tiene una marca de **visto**. Es por track, no por set: si un tema
+suena en varios sets, aparece marcado en todos. En el tracklist se puede **ocultar lo visto**
+para quedarse solo con lo que falta por escuchar.
 
 ## Arquitectura
 

@@ -7,7 +7,7 @@ from typing import Any
 
 import httpx
 
-from setid.artwork import safe_artwork_url
+from setid.artwork import safe_artwork_url, safe_preview_url
 from setid.models import Match
 from setid.providers.base import (
     PermanentProviderError,
@@ -38,9 +38,11 @@ def parse_response(payload: Any, confidence: float, provider: str = "audd") -> M
     result = payload.get("result")
     if not isinstance(result, dict) or not result.get("artist") or not result.get("title"):
         return None
-    isrc = (result.get("apple_music") or {}).get("isrc") or (
-        (result.get("spotify") or {}).get("external_ids") or {}
-    ).get("isrc")
+    apple = result.get("apple_music") or {}
+    previews = apple.get("previews") or [{}]
+    isrc = apple.get("isrc") or ((result.get("spotify") or {}).get("external_ids") or {}).get(
+        "isrc"
+    )
     return Match(
         artist=result["artist"],
         title=result["title"],
@@ -50,9 +52,8 @@ def parse_response(payload: Any, confidence: float, provider: str = "audd") -> M
         confidence=confidence,
         provider=provider,
         # Apple Music da la carátula como plantilla «…/{w}x{h}bb.jpg».
-        cover_url=safe_artwork_url(
-            ((result.get("apple_music") or {}).get("artwork") or {}).get("url")
-        ),
+        cover_url=safe_artwork_url((apple.get("artwork") or {}).get("url")),
+        preview_url=safe_preview_url(previews[0].get("url") if previews else None),
     )
 
 

@@ -84,14 +84,26 @@ class TrackEntry(SQLModel, table=True):
     detections: int = 0
     source: EntrySource = Field(sa_type=_enum(EntrySource))
     cover_url: str | None = None
+    preview_url: str | None = None
 
 
 class Artwork(SQLModel, table=True):
-    """Caché de búsquedas de carátulas: también se guardan las que no encontraron nada."""
+    """Caché de búsquedas en iTunes (carátula y preescucha): también se guardan las que no
+    encontraron nada."""
 
     key: str = Field(primary_key=True)  # artista|título normalizados
-    url: str | None = None
+    cover_url: str | None = None
+    preview_url: str | None = None
     fetched_at: datetime = Field(default_factory=utcnow, sa_type=sa.DateTime(timezone=True))
+
+
+class SeenTrack(SQLModel, table=True):
+    """Tracks marcados como vistos. Es por track, no por set: vale en todos los sets."""
+
+    __tablename__ = "seen_track"
+
+    key: str = Field(primary_key=True)  # artista|título normalizados
+    seen_at: datetime = Field(default_factory=utcnow, sa_type=sa.DateTime(timezone=True))
 
 
 class QueryUsage(SQLModel, table=True):

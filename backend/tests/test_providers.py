@@ -11,7 +11,15 @@ import httpx
 import pytest
 import respx
 
-from setid.artwork import LOOKUP_INTERVAL_S, ArtworkFinder, pick_itunes_result, safe_artwork_url
+from setid.artwork import (
+    LOOKUP_INTERVAL_S,
+    NO_MEDIA,
+    ArtworkFinder,
+    TrackMedia,
+    pick_itunes_result,
+    safe_artwork_url,
+    safe_preview_url,
+)
 from setid.audio.demo import DEMO_CATALOG
 from setid.providers import acrcloud, audd, shazam
 from setid.providers.acrcloud import ACRCloudProvider
@@ -350,6 +358,59 @@ def test_safe_artwork_url_drops_query_and_resizes() -> None:
     assert safe_artwork_url(url) == "https://is1-ssl.mzstatic.com/image/thumb/x/600x600bb.jpg"
 
 
+PREVIEW = (
+    "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/5e/mzaf_1.plus.aac.p.m4a"
+)
+
+
+def test_shazam_parse_preview_from_hub_actions() -> None:
+    payload = {
+        "matches": [{"id": "1"}],
+        "track": {
+            "title": "T",
+            "subtitle": "A",
+            "hub": {
+                "actions": [
+                    {"name": "apple", "type": "applemusicplay", "id": "1"},
+                    {"name": "apple", "type": "uri", "uri": PREVIEW},
+                ]
+            },
+        },
+    }
+    match = shazam.parse_response(payload, confidence=0.8)
+    assert match is not None and match.preview_url == PREVIEW
+
+
+def test_audd_parse_preview_from_apple_music() -> None:
+    payload = {
+        "status": "success",
+        "result": {"artist": "A", "title": "T", "apple_music": {"previews": [{"url": PREVIEW}]}},
+    }
+    match = audd.parse_response(payload, confidence=0.8)
+    assert match is not None and match.preview_url == PREVIEW
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        None,
+        "http://audio-ssl.itunes.apple.com/a.m4a",  # sin TLS
+        "https://evil.example.com/a.m4a",
+        "https://itunes.apple.com.evil.example/a.m4a",
+        "https://audio-ssl.itunes.apple.com/a.exe",  # no es audio
+        "https://user@audio-ssl.itunes.apple.com/a.m4a",
+        "https://audio-ssl.itunes.apple.com:8443/a.m4a",
+        "javascript:alert(1)",
+    ],
+)
+def test_safe_preview_url_rejects_untrusted(url: object) -> None:
+    assert safe_preview_url(url) is None
+
+
+def test_safe_preview_url_drops_query() -> None:
+    assert safe_preview_url(PREVIEW + "?x=1#y") == PREVIEW
+
+
 def test_pick_itunes_result_needs_same_title_and_shared_artist() -> None:
     cover = "https://is1-ssl.mzstatic.com/image/thumb/c/100x100bb.jpg"
     payload = {
@@ -361,24 +422,26 @@ def test_pick_itunes_result_needs_same_title_and_shared_artist() -> None:
                 "trackName": "Vibes (Original Mix)",
                 "artworkUrl100": cover,
             },
+            # Otra edición del mismo track: completa la preescucha que le faltaba a la primera.
+            {"artistName": "Ilario Alicante", "trackName": "Vibes", "previewUrl": PREVIEW},
         ]
     }
-    assert pick_itunes_result("Ilario Alicante", "Vibes", payload) == cover.replace(
-        "100x100", "600x600"
+    assert pick_itunes_result("Ilario Alicante", "Vibes", payload) == TrackMedia(
+        cover.replace("100x100", "600x600"), PREVIEW
     )
-    assert pick_itunes_result("Nobody", "Vibes", payload) is None
-    assert pick_itunes_result("A", "T", "no es un dict") is None
+    assert pick_itunes_result("Nobody", "Vibes", payload) == NO_MEDIA
+    assert pick_itunes_result("A", "T", "no es un dict") == NO_MEDIA
 
 
 class _MemoryCache:
     def __init__(self) -> None:
-        self.data: dict[str, str | None] = {}
+        self.data: dict[str, TrackMedia] = {}
 
-    def get(self, key: str) -> tuple[bool, str | None]:
-        return (key in self.data, self.data.get(key))
+    def get(self, key: str) -> TrackMedia | None:
+        return self.data.get(key)
 
-    def put(self, key: str, url: str | None) -> None:
-        self.data[key] = url
+    def put(self, key: str, media: TrackMedia) -> None:
+        self.data[key] = media
 
 
 async def test_artwork_finder_caches_hits_and_misses_but_not_rate_limits() -> None:
@@ -403,11 +466,11 @@ async def test_artwork_finder_caches_hits_and_misses_but_not_rate_limits() -> No
         clock=lambda: 0.0,
     )
     status["code"] = 429
-    assert await finder.find("A", "T") is None
-    assert cache.data == {}  # el límite de iTunes no se guarda como «sin carátula»
+    assert await finder.find("A", "T") == NO_MEDIA
+    assert cache.data == {}  # el límite de iTunes no se guarda como «sin resultado»
     status["code"] = 200
-    assert await finder.find("A", "T") is None
-    assert await finder.find("A", "T") is None  # segunda vez: desde la caché
+    assert await finder.find("A", "T") == NO_MEDIA
+    assert await finder.find("A", "T") == NO_MEDIA  # segunda vez: desde la caché
     assert len(calls) == 2
     assert slept == [LOOKUP_INTERVAL_S]  # respeta el intervalo entre peticiones
     await finder.aclose()

@@ -218,6 +218,62 @@ function mockCover(artist: string, title: string): string | null {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
+const mockSeen = new Set<string>()
+const mockPreviews = new Map<string, string | null>()
+
+const trackKey = (artist: string, title: string) => `${artist}|${title}`.toLowerCase()
+
+/** Preescucha inventada para la demo: 6 s de un bucle de bombo y acorde en WAV (data:). */
+function mockPreview(artist: string, title: string): string | null {
+  const key = trackKey(artist, title)
+  if (mockPreviews.has(key)) return mockPreviews.get(key) ?? null
+  let h = 0
+  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  // Como en la realidad, alguno se queda sin preescucha (unreleased, IDs…).
+  if (h % 4 === 1) {
+    mockPreviews.set(key, null)
+    return null
+  }
+  const rate = 16000
+  const length = rate * 6
+  const view = new DataView(new ArrayBuffer(44 + length * 2))
+  const text = (at: number, s: string) =>
+    [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)))
+  text(0, 'RIFF')
+  view.setUint32(4, 36 + length * 2, true)
+  text(8, 'WAVEfmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, rate, true)
+  view.setUint32(28, rate * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  text(36, 'data')
+  view.setUint32(40, length * 2, true)
+  // Cada track con su tono y su tempo, para que no haya dos preescuchas idénticas.
+  const root = 55 * 2 ** ((h % 12) / 12)
+  const beatLength = 60 / (118 + (h % 11))
+  for (let i = 0; i < length; i++) {
+    const t = i / rate
+    const beat = t % beatLength
+    const kick =
+      Math.sin(2 * Math.PI * (50 + 90 * Math.exp(-beat * 30)) * beat) * Math.exp(-beat * 9)
+    const chord = [1, 1.5, 2.4].reduce((s, m) => s + Math.sin(2 * Math.PI * root * 4 * m * t), 0)
+    const pump = Math.min(1, beat * 6)
+    const fade = Math.min(1, t * 4, (6 - t) * 4)
+    view.setInt16(44 + i * 2, (kick * 0.55 + chord * 0.09 * pump) * fade * 32767, true)
+  }
+  let binary = ''
+  const bytes = new Uint8Array(view.buffer)
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  }
+  const url = `data:audio/wav;base64,${btoa(binary)}`
+  mockPreviews.set(key, url)
+  return url
+}
+
 function decorate(job: Job, rows: typeof SAMPLE, community: Community): Entry[] {
   // Como en Python: no se sugiere un track que la huella ya ha identificado en el set.
   const known = new Set(
@@ -229,6 +285,9 @@ function decorate(job: Job, rows: typeof SAMPLE, community: Community): Entry[] 
   return rows.map((row, i) => ({
     ...row,
     cover_url: row.source === 'unknown' ? null : mockCover(row.artist, row.title),
+    preview_url: row.source === 'unknown' ? null : mockPreview(row.artist, row.title),
+    track_key: row.source === 'unknown' ? null : trackKey(row.artist, row.title),
+    seen: row.source !== 'unknown' && mockSeen.has(trackKey(row.artist, row.title)),
     position: i + 1,
     timestamp_url:
       job.source_type === 'youtube' ? `${job.source}&t=${Math.floor(row.start_s)}s` : null,
@@ -434,6 +493,13 @@ export function createMockApi(options: MockOptions = {}): RawApi {
       jobs.delete(id)
       emitBridgeEvent({ type: 'job_deleted', job_id: id })
       return ok(null)
+    },
+    async set_seen(artist, title, seen) {
+      const key = trackKey(artist, title)
+      if (seen) mockSeen.add(key)
+      else mockSeen.delete(key)
+      emitBridgeEvent({ type: 'seen', track_key: key, seen })
+      return ok({ track_key: key, seen })
     },
     async export_job(id, fmt) {
       const d = detail(id)

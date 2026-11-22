@@ -15,6 +15,22 @@ export function safeCoverUrl(url: string | null | undefined): string | null {
   }
 }
 
+const PREVIEW_HOST = /^[a-z0-9-]+(\.[a-z0-9-]+)*\.itunes\.apple\.com$/
+
+/** Devuelve la URL si es una preescucha de Apple por https (o un data: de audio, en la demo). */
+export function safePreviewUrl(url: string | null | undefined): string | null {
+  if (!url) return null
+  if (/^data:audio\/(wav|mpeg|mp4)[;,]/.test(url)) return url
+  try {
+    const u = new URL(url)
+    if (u.protocol !== 'https:' || u.username || u.password || u.port) return null
+    if (!PREVIEW_HOST.test(u.hostname) || !/\.(m4a|aac|mp3)$/i.test(u.pathname)) return null
+    return `${u.origin}${u.pathname}`
+  } catch {
+    return null
+  }
+}
+
 /** Tono estable (0–360) a partir del nombre, para el marcador de posición sin carátula. */
 export function hueFor(text: string): number {
   let h = 0

@@ -90,6 +90,7 @@ class Events:
 
 
 COVER = "https://is1-ssl.mzstatic.com/image/thumb/Music/x/600x600bb.jpg"
+PREVIEW = "https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview/x/mzaf_1.plus.aac.p.m4a"
 ARTWORK_REQUESTS: list[str] = []
 
 
@@ -104,6 +105,7 @@ def _fake_itunes(request: httpx.Request) -> httpx.Response:
                 "artistName": "Lumen Grid",
                 "trackName": "Night Shift",
                 "artworkUrl100": COVER.replace("600x600", "100x100"),
+                "previewUrl": PREVIEW,
             }
         )
     return httpx.Response(200, json={"results": results})
@@ -199,12 +201,13 @@ def test_missing_covers_are_found_and_cached(
         )
     )
     detail = ok(app.api.get_job(job["id"]))
-    covers = [(t["title"], t["cover_url"]) for t in detail["tracklist"]]
-    assert covers == [
-        ("Night Shift", COVER),  # «Night Shift» suena dos veces: una búsqueda, dos carátulas
-        ("ID", None),  # los ID – ID no se buscan
-        ("Groove Theory", None),  # iTunes no lo conoce
-        ("Night Shift", COVER),
+    media = [(t["title"], t["cover_url"], t["preview_url"]) for t in detail["tracklist"]]
+    assert media == [
+        # «Night Shift» suena dos veces: una búsqueda, carátula y preescucha en las dos.
+        ("Night Shift", COVER, PREVIEW),
+        ("ID", None, None),  # los ID – ID no se buscan
+        ("Groove Theory", None, None),  # iTunes no lo conoce
+        ("Night Shift", COVER, PREVIEW),
     ]
 
     # Otro trabajo con los mismos tracks no vuelve a preguntar a iTunes.
@@ -224,6 +227,37 @@ def test_artwork_lookup_can_be_disabled(app: AppContext, events: Events, demo_fi
     assert app.manager.artwork_idle.wait(TIMEOUT)
     assert len(ARTWORK_REQUESTS) == before
     assert all(t["cover_url"] is None for t in ok(app.api.get_job(job["id"]))["tracklist"])
+
+
+def test_seen_marks_the_track_in_every_set(
+    app: AppContext, events: Events, demo_file: Path
+) -> None:
+    first = ok(app.api.create_job_from_file(str(demo_file)))
+    events.wait_status(first["id"], JobStatus.DONE)
+    second = ok(app.api.create_job_from_file(str(demo_file), True))
+    events.wait_status(second["id"], JobStatus.DONE)
+
+    def seen(job_id: int) -> list[tuple[str, bool]]:
+        return [(t["title"], t["seen"]) for t in ok(app.api.get_job(job_id))["tracklist"]]
+
+    assert ok(app.api.get_job(first["id"]))["tracklist"][1]["track_key"] is None  # ID – ID
+    marked = ok(app.api.set_seen("Lumen Grid", "Night Shift (Original Mix)", True))
+    assert marked == {"track_key": "lumen grid|night shift", "seen": True}
+    assert events.wait(lambda e: e["type"] == "seen")["track_key"] == "lumen grid|night shift"
+    # Las dos apariciones del track, en los dos sets; el resto no.
+    expected = [
+        ("Night Shift", True),
+        ("ID", False),
+        ("Groove Theory", False),
+        ("Night Shift", True),
+    ]
+    assert seen(first["id"]) == expected
+    assert seen(second["id"]) == expected
+
+    ok(app.api.set_seen("Lumen Grid", "Night Shift", False))
+    assert not any(flag for _, flag in seen(first["id"]))
+    assert not app.api.set_seen("", "Night Shift", True)["ok"]
+    assert not app.api.set_seen("Lumen Grid", "Night Shift", "sí")["ok"]
 
 
 def test_history_lists_newest_first(app: AppContext, events: Events, demo_file: Path) -> None:

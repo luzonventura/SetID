@@ -183,6 +183,8 @@ def _entry_from(occ: _Occurrence, window_s: float) -> TracklistEntry:
         detections=occ.count,
         source=EntrySource.FINGERPRINT,
         cover_url=best.cover_url or next((m.cover_url for m in matches if m.cover_url), None),
+        preview_url=best.preview_url
+        or next((m.preview_url for m in matches if m.preview_url), None),
     )
 
 

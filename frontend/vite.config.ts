@@ -22,6 +22,8 @@ const CSP = [
   "font-src 'self'",
   // Carátulas: solo la CDN de Apple (Shazam, Apple Music e iTunes las sirven desde ahí).
   "img-src 'self' data: https://*.mzstatic.com",
+  // Preescuchas: fragmentos de 30 s que sirve Apple.
+  'media-src https://*.itunes.apple.com',
   "connect-src 'self'",
   "object-src 'none'",
   "base-uri 'none'",

@@ -26,6 +26,11 @@ export interface RawApi {
   get_job(id: number): Promise<Result<JobDetail>>
   cancel_job(id: number): Promise<Result<Job>>
   delete_job(id: number): Promise<Result<null>>
+  set_seen(
+    artist: string,
+    title: string,
+    seen: boolean,
+  ): Promise<Result<{ track_key: string; seen: boolean }>>
   export_job(id: number, fmt: ExportFormat): Promise<Result<ExportedFile>>
   save_export(id: number, fmt: ExportFormat): Promise<Result<{ path: string | null }>>
   get_settings(): Promise<Result<SettingsView>>
@@ -108,6 +113,8 @@ export const api = {
   getJob: (id: number) => call((a) => a.get_job(id)),
   cancelJob: (id: number) => call((a) => a.cancel_job(id)),
   deleteJob: (id: number) => call((a) => a.delete_job(id)),
+  setSeen: (artist: string, title: string, seen: boolean) =>
+    call((a) => a.set_seen(artist, title, seen)),
   exportJob: (id: number, fmt: ExportFormat) => call((a) => a.export_job(id, fmt)),
   saveExport: (id: number, fmt: ExportFormat) => call((a) => a.save_export(id, fmt)),
   getSettings: () => call((a) => a.get_settings()),

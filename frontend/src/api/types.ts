@@ -49,6 +49,12 @@ export interface Entry {
   source: EntrySource
   /** Carátula (CDN de Apple, ya validada en Python). */
   cover_url?: string | null
+  /** Preescucha de unos 30 s (Apple, ya validada en Python). */
+  preview_url?: string | null
+  /** Identidad del track (artista y título normalizados), la misma en cualquier set. */
+  track_key?: string | null
+  /** Marcado como visto (en cualquier set). */
+  seen?: boolean
   timestamp_url: string | null
   search: SearchLinks | null
   /** Solo en los ID – ID: lo que dice la comunidad sobre ese tramo (sin verificar). */
@@ -144,6 +150,7 @@ export type BridgeEvent =
   | { type: 'community'; job_id: number; community: Community }
   | { type: 'file_dropped'; job: Job }
   | { type: 'error'; error: string }
+  | { type: 'seen'; track_key: string; seen: boolean }
 
 const ACTIVE_STATUSES: readonly JobStatus[] = ['downloading', 'analyzing', 'aggregating']
 const FINAL_STATUSES: readonly JobStatus[] = ['done', 'failed', 'cancelled']

@@ -76,6 +76,34 @@ describe('Home', () => {
     expect(screen.getByRole('list', { name: 'Tracklist', hidden: true })).not.toBeVisible()
   })
 
+  it('marks tracks as seen and can hide them', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /Usa tu propio archivo/ }))
+    await waitFor(
+      () => expect(screen.getByText('Listo', { selector: 'span' })).toBeInTheDocument(),
+      { timeout: 3000 },
+    )
+    const list = screen.getByRole('list', { name: 'Tracklist' })
+    const rows = list.children.length
+    expect(screen.getByText(/de 6\s+vistos/)).toHaveTextContent('0 de 6 vistos')
+
+    const mark = screen.getByRole('button', { name: 'Marcar Joey Harmless – So Shady como visto' })
+    await user.click(mark)
+    await waitFor(() => expect(mark).toHaveAttribute('aria-pressed', 'true'))
+    expect(screen.getByText(/de 6\s+vistos/)).toHaveTextContent('1 de 6 vistos')
+
+    await user.click(screen.getByLabelText('Ocultar vistos'))
+    expect(screen.getByRole('list', { name: 'Tracklist' }).children).toHaveLength(rows - 1)
+    expect(screen.queryByText('So Shady')).not.toBeInTheDocument()
+
+    await user.click(screen.getByLabelText('Ocultar vistos'))
+    await user.click(
+      screen.getByRole('button', { name: 'Quitar la marca de visto a Joey Harmless – So Shady' }),
+    )
+    await waitFor(() => expect(screen.getByText(/de 6\s+vistos/)).toHaveTextContent('0 de 6'))
+  })
+
   it('does not show the community tab for uploaded files', async () => {
     const user = userEvent.setup()
     render(<App />)

@@ -149,6 +149,13 @@ class Api:
         self._manager.delete(_job_id(job_id))
         return None
 
+    @_endpoint
+    def set_seen(self, artist: object, title: object, seen: object) -> Any:
+        """Marca un track como visto (o lo desmarca) en todos los sets."""
+        flag = _flag(seen)
+        key = self._manager.set_seen(_text(artist, "el artista"), _text(title, "el título"), flag)
+        return {"track_key": key, "seen": flag}
+
     # --- Exportación -----------------------------------------------------------------------
 
     def _export(self, job_id: object, fmt: object) -> Any:

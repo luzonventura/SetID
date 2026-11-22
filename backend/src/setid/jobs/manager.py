@@ -24,7 +24,7 @@ from typing import Any
 from sqlalchemy import Engine
 
 from setid import proc
-from setid.artwork import ArtworkCache, ArtworkFinder
+from setid.artwork import ArtworkCache, ArtworkFinder, cache_key
 from setid.audio.ffmpeg import InvalidAudioError
 from setid.community import Hint, parse_community
 from setid.config import Settings
@@ -230,7 +230,8 @@ class JobManager:
                 "job_id": job_id,
                 "live": live,
                 "tracklist": [
-                    v.model_dump(mode="json") for v in tracklist_views(view, entries, hints)
+                    v.model_dump(mode="json")
+                    for v in tracklist_views(view, entries, hints, self.repo.seen_keys())
                 ],
             }
         )
@@ -292,11 +293,11 @@ class JobManager:
         live = job_id in self._live
         entries = self._live[job_id] if live else self.repo.entries(job_id)
         hints = self.repo.hints(job_id)
-        if job.status is JobStatus.DONE and not live and _missing_covers(entries):
+        if job.status is JobStatus.DONE and not live and _missing_media(entries):
             self._schedule_artwork(job_id)
         return JobDetail(
             **view.model_dump(),
-            tracklist=tracklist_views(view, entries, hints),
+            tracklist=tracklist_views(view, entries, hints, self.repo.seen_keys()),
             live=live,
             community=community_view(view, hints),
         )
@@ -323,6 +324,15 @@ class JobManager:
             self.cancel(job_id)
         self.repo.delete(job_id)
         self._emit({"type": "job_deleted", "job_id": job_id})
+
+    def set_seen(self, artist: str, title: str, seen: bool) -> str:
+        """Marca un track como visto (o lo desmarca) en todos los sets. Devuelve su clave."""
+        key = cache_key(artist, title)
+        if not key.strip("|"):
+            raise JobError("Track no válido.")
+        self.repo.set_seen(key, seen)
+        self._emit({"type": "seen", "track_key": key, "seen": seen})
+        return key
 
     def notify_settings_changed(self) -> None:
         """Despierta a un trabajo que espera presupuesto, por si se ha ampliado."""
@@ -576,14 +586,16 @@ class JobManager:
                     await finder.aclose()
 
     async def _enrich_artwork(self, job_id: int, finder: ArtworkFinder) -> None:
-        for entry in _missing_covers(self.repo.entries(job_id)):
-            url = await finder.find(entry.artist, entry.title)
-            if url is None or not self.repo.set_covers(job_id, {entry.position: url}):
+        for entry in _missing_media(self.repo.entries(job_id)):
+            media = await finder.find(entry.artist, entry.title)
+            if not any(media) or not self.repo.fill_media(job_id, {entry.position: media}):
                 continue
-            # Se avisa en cuanto aparece cada carátula; el trabajo puede haberse borrado.
+            # Se avisa en cuanto aparece cada carátula o preescucha; el trabajo puede
+            # haberse borrado mientras tanto.
             if self.repo.get(job_id) is not None:
                 self._emit_tracklist(job_id, self.repo.entries(job_id), live=False)
 
 
-def _missing_covers(entries: list[TracklistEntry]) -> list[TracklistEntry]:
-    return [e for e in entries if not e.is_unknown and not e.cover_url]
+def _missing_media(entries: list[TracklistEntry]) -> list[TracklistEntry]:
+    """Tracks identificados a los que les falta la carátula o la preescucha."""
+    return [e for e in entries if not e.is_unknown and not (e.cover_url and e.preview_url)]

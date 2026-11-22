@@ -4,12 +4,14 @@ import { api, BridgeError } from '../api/bridge'
 import { isActive, isFinal, type Entry, type Job, type JobStatus } from '../api/types'
 import { CommunityPanel } from '../components/Community'
 import { Cover } from '../components/Cover'
+import { PreviewCover } from '../components/PreviewCover'
 import { ExportBar } from '../components/ExportBar'
 import { RecordStage } from '../components/RecordStage'
 import { SetTimeline } from '../components/SetTimeline'
 import { Tracklist } from '../components/Tracklist'
 import { ExternalLink, Notice, Spinner, StatusPill } from '../components/ui'
 import { catalogNumber, fileName, formatDuration, formatTime, sourceLabel } from '../lib/format'
+import { stopPreview } from '../lib/preview'
 import { href, navigate } from '../lib/router'
 import { useJobs } from '../state/context'
 import type { TurntableMode } from '../three/model'
@@ -149,12 +151,12 @@ function NowPlaying({ entries }: { entries: Entry[] }) {
   if (!last) return null
   return (
     <div key={`${last.position}-${last.title}`} className="flex animate-rise items-center gap-4">
-      <Cover
+      <PreviewCover
         url={last.cover_url}
+        previewUrl={last.preview_url}
         artist={last.artist}
         title={last.title}
         size={76}
-        rounded="rounded-[2px]"
       />
       <span className="min-w-0">
         <span className="label flex items-center gap-2 !text-signal">
@@ -233,6 +235,9 @@ export function JobScreen({ id }: { id: number }) {
   const list = tracklists[id]
   const community = communities[id]
   const status = job?.status
+
+  // La preescucha que suene se para al salir de la pantalla del set.
+  useEffect(() => stopPreview, [])
 
   // El componente se monta de nuevo por cada id (key en App), así que no hay que limpiar.
   useEffect(() => {
