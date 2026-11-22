@@ -152,14 +152,15 @@ export function Tracklist({
             </span>
             <span aria-hidden className="h-3 w-px bg-line-strong" />
             <span className="flex items-center gap-2">
-              <span aria-hidden className="grid size-3.5 place-items-center bg-paper text-ink">
-                <svg viewBox="0 0 24 24" className="ml-px size-2">
-                  <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+              <span
+                aria-hidden
+                className="grid size-4 place-items-center rounded-full bg-ink text-paper ring-1 ring-white/20"
+              >
+                <svg viewBox="0 0 24 24" className="size-[7px] translate-x-[0.5px]">
+                  <path d="M6 3.5v17l15-8.5z" fill="currentColor" />
                 </svg>
               </span>
-              {playable > 0
-                ? `${playable} con preescucha · pulsa la carátula`
-                : 'Sin preescuchas todavía'}
+              {playable > 0 ? `${playable} con preescucha` : 'Sin preescuchas todavía'}
             </span>
           </p>
           <label className="label flex cursor-pointer items-center gap-2.5 hover:text-chalk">

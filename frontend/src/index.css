@@ -41,6 +41,7 @@
   --animate-scan: scan 1.4s linear infinite;
   --animate-marquee: marquee 60s linear infinite;
   --animate-spin-slow: spin 9s linear infinite;
+  --animate-eq: eq 0.9s ease-in-out infinite;
 
   @keyframes rise {
     from {
@@ -81,6 +82,16 @@
   @keyframes marquee {
     to {
       transform: translate3d(-50%, 0, 0);
+    }
+  }
+  /* Barras del ecualizador de la preescucha. */
+  @keyframes eq {
+    0%,
+    100% {
+      transform: scaleY(0.3);
+    }
+    50% {
+      transform: scaleY(1);
     }
   }
 }

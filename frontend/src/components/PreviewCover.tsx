@@ -1,32 +1,64 @@
-// Carátula que, si el track tiene preescucha, es también el botón para escucharla: al pasar
-// el ratón aparece ▶, mientras suena muestra ❚❚ y una barra de progreso en su borde inferior.
+// Carátula que, si el track tiene preescucha, es también el botón para escucharla.
+//
+// Discreto: una pastilla redonda en la esquina con ▶. Al pasar el ratón se enciende en azul;
+// mientras suena muestra un ecualizador y un anillo con el progreso, y al pasar por encima
+// cambia a pausa.
 
 import { safePreviewUrl } from '../lib/cover'
-import { togglePreview, usePreview } from '../lib/preview'
+import { togglePreview, usePreview, type PreviewStatus } from '../lib/preview'
 import { Cover } from './Cover'
 
-function Icon({ status }: { status: string }) {
-  if (status === 'loading') {
-    return (
-      <span className="size-5 animate-spin rounded-full border-2 border-paper/30 border-t-paper" />
-    )
-  }
-  if (status === 'playing') {
-    return (
-      <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
-        <rect x="6" y="5" width="4" height="14" fill="currentColor" />
-        <rect x="14" y="5" width="4" height="14" fill="currentColor" />
-      </svg>
-    )
-  }
-  if (status === 'error') {
-    return <span className="display text-xl">!</span>
-  }
+const RING = 2 * Math.PI * 10.5 // circunferencia del anillo de progreso (r = 10,5)
+
+function Play({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="ml-0.5 size-5" aria-hidden>
-      <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
+    <svg viewBox="0 0 24 24" className={`size-[9px] translate-x-[0.5px] ${className}`} aria-hidden>
+      <path d="M6 3.5v17l15-8.5z" fill="currentColor" />
     </svg>
   )
+}
+
+function Pause({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={`size-[9px] ${className}`} aria-hidden>
+      <rect x="5" y="4" width="5" height="16" fill="currentColor" />
+      <rect x="14" y="4" width="5" height="16" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** Tres barras que laten mientras suena (quietas si se pide menos movimiento). */
+function Equalizer({ className = '' }: { className?: string }) {
+  return (
+    <span aria-hidden className={`flex h-[9px] items-end gap-[1.5px] ${className}`}>
+      {[0, 180, 90].map((delay) => (
+        <span
+          key={delay}
+          className="h-full w-[2px] origin-bottom animate-eq bg-current"
+          style={{ animationDelay: `-${delay}ms` }}
+        />
+      ))}
+    </span>
+  )
+}
+
+function Glyph({ status }: { status: PreviewStatus }) {
+  if (status === 'loading') {
+    return (
+      <span className="size-[11px] animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
+    )
+  }
+  if (status === 'error') return <span className="font-mono text-[10px] font-bold">!</span>
+  if (status === 'playing') {
+    // Suena: ecualizador; al pasar por encima, pausa.
+    return (
+      <>
+        <Equalizer className="group-hover/pv:hidden group-focus-visible/pv:hidden" />
+        <Pause className="hidden group-hover/pv:block group-focus-visible/pv:block" />
+      </>
+    )
+  }
+  return <Play />
 }
 
 export function PreviewCover({
@@ -56,14 +88,20 @@ export function PreviewCover({
     )
   }
 
-  const active = status !== 'idle'
+  const busy = status === 'playing' || status === 'loading'
   const name = `${artist} – ${title}`
-  const label =
-    status === 'playing' || status === 'loading'
-      ? `Pausar la preescucha de ${name}`
-      : status === 'error'
-        ? `No se pudo reproducir ${name}. Reintentar`
-        : `Escuchar la preescucha de ${name}`
+  const label = busy
+    ? `Pausar la preescucha de ${name}`
+    : status === 'error'
+      ? `No se pudo reproducir ${name}. Reintentar`
+      : `Escuchar la preescucha de ${name}`
+
+  const chip =
+    status === 'error'
+      ? 'bg-bad text-ink'
+      : busy || status === 'paused'
+        ? 'bg-ink/85 text-signal group-hover/pv:bg-signal group-hover/pv:text-ink'
+        : 'bg-ink/75 text-paper group-hover/pv:bg-signal group-hover/pv:text-ink group-focus-visible/pv:bg-signal group-focus-visible/pv:text-ink'
 
   return (
     <button
@@ -73,40 +111,41 @@ export function PreviewCover({
         togglePreview(preview)
       }}
       aria-label={label}
-      aria-pressed={status === 'playing' || status === 'loading'}
+      aria-pressed={busy}
       title={label}
       className={`group/pv relative block shrink-0 cursor-pointer ${className}`}
     >
       {cover}
-      {/* Marca siempre visible: esta carátula se puede escuchar. */}
+      {/* Mientras suena, la carátula se oscurece un poco para que destaque el control. */}
       <span
         aria-hidden
-        className={`absolute right-0 bottom-0 grid size-[18px] place-items-center bg-paper text-ink transition-opacity duration-200 ${
-          active ? 'opacity-0' : 'group-hover/pv:opacity-0 group-focus-visible/pv:opacity-0'
+        className={`pointer-events-none absolute inset-0 bg-ink transition-opacity duration-300 ${
+          busy ? 'opacity-25' : 'opacity-0'
         }`}
-      >
-        <svg viewBox="0 0 24 24" className="ml-px size-2.5">
-          <path d="M7 4.5v15l13-7.5z" fill="currentColor" />
-        </svg>
-      </span>
+      />
       <span
         aria-hidden
-        className={`absolute inset-0 grid place-items-center bg-ink/60 text-paper transition-opacity duration-200 ${
-          active
-            ? 'opacity-100'
-            : 'opacity-0 group-hover/pv:opacity-100 group-focus-visible/pv:opacity-100'
-        }`}
+        className={`absolute right-[3px] bottom-[3px] grid size-[22px] place-items-center rounded-full shadow-[0_1px_6px_rgb(0_0_0/0.55)] ring-1 ring-white/15 transition-[background-color,color,scale] duration-200 ease-out group-hover/pv:scale-110 group-focus-visible/pv:scale-110 ${chip}`}
       >
-        <Icon status={status} />
+        {/* Anillo de progreso alrededor de la pastilla. */}
+        {(busy || status === 'paused') && (
+          <svg viewBox="0 0 24 24" className="absolute inset-[-1px] -rotate-90" aria-hidden>
+            <circle
+              cx="12"
+              cy="12"
+              r="10.5"
+              fill="none"
+              stroke="currentColor"
+              strokeOpacity="0.9"
+              strokeWidth="1.5"
+              strokeDasharray={RING}
+              strokeDashoffset={RING * (1 - progress)}
+              className="transition-[stroke-dashoffset] duration-300 ease-linear"
+            />
+          </svg>
+        )}
+        <Glyph status={status} />
       </span>
-      {active && (
-        <span aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] bg-ink/70">
-          <span
-            className="block h-full origin-left bg-signal transition-transform duration-300 ease-linear"
-            style={{ transform: `scaleX(${progress})` }}
-          />
-        </span>
-      )}
     </button>
   )
 }

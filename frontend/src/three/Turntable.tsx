@@ -45,7 +45,7 @@ import {
   type GrooveBand,
   type TurntableMode,
 } from './model'
-import { grooveRoughnessTexture, labelTexture } from './textures'
+import { labelTexture, sharedVinylMaps, vinylRoughnessTexture } from './textures'
 
 const SIGNAL = new THREE.Color('#7dd3fc')
 // Edición SetID: pilotos en azul hielo, a juego con la interfaz.
@@ -69,6 +69,9 @@ const RIM_TOP = 0.145
 const MAT_TOP = 0.157
 const RECORD_Y = MAT_TOP + 0.011
 const RECORD_TOP = RECORD_Y + 0.011
+// Medio grosor del vinilo: radio del canto redondeado.
+const VINYL_EDGE = 0.011
+const VINYL_NORMAL = new THREE.Vector2(0.55, 0.55)
 const ARM_TUBE_Y = RECORD_TOP + 0.158
 
 const MATTE = { color: '#17181b', roughness: 0.62, metalness: 0.12 }
@@ -402,7 +405,8 @@ function Platter({
   const drop = useRef(showRecord ? 0 : 1)
   const rim = useDisposable(() => strobeRimTexture())
   const mat = useDisposable(() => slipmatTexture())
-  const grooves = useDisposable(() => grooveRoughnessTexture())
+  const roughness = useDisposable(() => vinylRoughnessTexture(2048, catalog), catalog)
+  const { normal, anisotropy } = useMemo(() => sharedVinylMaps(), [])
   const label = useDisposable(() => labelTexture(1024, catalog), catalog)
 
   useFrame((_, dt) => {
@@ -492,20 +496,48 @@ function Platter({
 
         {/* Vinilo */}
         <group ref={record} position={[0, RECORD_Y, 0]}>
+          {/* Cuerpo: el canto redondeado lo pone el toro de abajo. */}
           <mesh castShadow receiveShadow>
-            <cylinderGeometry args={[RECORD_R, RECORD_R, 0.022, 160, 1]} />
+            <cylinderGeometry
+              args={[RECORD_R - VINYL_EDGE, RECORD_R - VINYL_EDGE, VINYL_EDGE * 2, 160, 1]}
+            />
+            <meshPhysicalMaterial color="#09090b" roughness={0.3} clearcoat={0.4} />
+          </mesh>
+          <mesh rotation-x={Math.PI / 2}>
+            <torusGeometry args={[RECORD_R - VINYL_EDGE, VINYL_EDGE, 14, 256]} />
             <meshPhysicalMaterial
               color="#0b0b0d"
-              roughness={0.5}
-              roughnessMap={grooves}
-              metalness={0.1}
-              clearcoat={0.7}
-              clearcoatRoughness={0.25}
+              roughness={0.18}
+              clearcoat={0.8}
+              clearcoatRoughness={0.1}
             />
           </mesh>
-          <mesh position={[0, 0.0115, 0]} rotation-x={-Math.PI / 2}>
+          {/* Cara: surcos con brillo anisótropo (la estela de luz que cruza el disco). */}
+          <mesh position={[0, VINYL_EDGE + 0.0002, 0]} rotation-x={-Math.PI / 2} receiveShadow>
+            <ringGeometry args={[LABEL_R, RECORD_R - VINYL_EDGE * 0.6, 256, 1]} />
+            <meshPhysicalMaterial
+              color="#0d0d10"
+              roughness={0.46}
+              roughnessMap={roughness}
+              normalMap={normal}
+              normalScale={VINYL_NORMAL}
+              anisotropy={0.92}
+              anisotropyMap={anisotropy}
+              clearcoat={0.28}
+              clearcoatRoughness={0.22}
+              metalness={0}
+            />
+          </mesh>
+          {/* Etiqueta de papel: recibe luz (no es una pegatina emisiva), algo satinada. */}
+          <mesh position={[0, VINYL_EDGE + 0.0006, 0]} rotation-x={-Math.PI / 2}>
             <circleGeometry args={[LABEL_R, 96]} />
-            <meshBasicMaterial map={label} toneMapped={false} color="#e8e8e8" />
+            <meshStandardMaterial
+              map={label}
+              roughness={0.58}
+              emissive="#ffffff"
+              emissiveMap={label}
+              emissiveIntensity={0.32}
+            />
           </mesh>
         </group>
       </group>
@@ -536,7 +568,8 @@ function GrooveRing({
     if (band.unknown) color.setRGB(0.5, 0.5, 0.56).multiplyScalar(intensity)
     else color.copy(SIGNAL).multiplyScalar(intensity)
     material.current.color.copy(color)
-    material.current.opacity = appear.current * (band.unknown ? 0.6 : 0.85)
+    // Tiñen el surco sin taparlo: el vinilo y su brillo se siguen viendo debajo.
+    material.current.opacity = appear.current * (band.unknown ? 0.1 : active ? 0.7 : 0.16)
   })
 
   const pointer = (e: ThreeEvent<PointerEvent>, value: GrooveBand | null) => {
@@ -579,8 +612,23 @@ function SetGrooves({
   'bands' | 'hovered' | 'onHover' | 'onSelect' | 'mode' | 'scannedS' | 'duration'
 >) {
   const playedInner = mode === 'playing' && duration ? radiusAt(scannedS ?? 0, duration) : null
+  // Una separación lisa al empezar cada track (salvo el primero, que empieza en el borde).
+  const gaps = bands.filter((b) => b.outer < GROOVE_OUTER - 0.02).map((b) => b.outer + 0.0045)
   return (
     <group position={[PLATTER_AT.x, RECORD_TOP + 0.0006, PLATTER_AT.z]} rotation-x={-Math.PI / 2}>
+      {gaps.map((r) => (
+        <mesh key={r} position-z={-0.0003}>
+          <ringGeometry args={[r - 0.0028, r + 0.0028, 192, 1]} />
+          <meshPhysicalMaterial
+            color="#050506"
+            roughness={0.08}
+            clearcoat={1}
+            clearcoatRoughness={0.05}
+            polygonOffset
+            polygonOffsetFactor={-1}
+          />
+        </mesh>
+      ))}
       {playedInner !== null && GROOVE_OUTER - playedInner > 0.003 && (
         <mesh>
           <ringGeometry args={[playedInner, GROOVE_OUTER, 160, 1]} />
